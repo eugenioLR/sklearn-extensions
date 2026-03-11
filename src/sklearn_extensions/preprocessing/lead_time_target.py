@@ -16,11 +16,11 @@ class LeadFeatureTransformer(BaseEstimator, TransformerMixin):
         self.mask_ = np.arange(ntimesteps) >= self.lead_time
 
         windowed_features = np.full((ntimesteps, nfeatures, self.lead_time), np.nan)
-        for idx, val in enumerate(X_ts[:-self.lead_time]):
+        for idx, val in enumerate(X[:-self.lead_time]):
             windowed_features[idx + self.lead_time] = X[idx : idx + self.lead_time, :]
         
         if self.flatten_output:
-            windowed_features = windowed_features.view((ntimesteps, nfeatures * self.lead_time))
+            windowed_features = windowed_features.reshape((ntimesteps, nfeatures * self.lead_time))
         if self.apply_mask:
             windowed_features = windowed_features[self.mask_, :]
 
@@ -30,7 +30,7 @@ class LeadFeatureTransformer(BaseEstimator, TransformerMixin):
         if self.apply_mask:
             y_result = y[self.lead_time:]
         else:
-            y_result = self.full_like(y, np.nan)
+            y_result = np.full_like(y, np.nan)
             y_result[self.lead_time:] = y[:-self.lead_time]
 
         return y_result

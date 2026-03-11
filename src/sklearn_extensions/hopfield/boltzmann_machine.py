@@ -5,7 +5,7 @@ import scipy as sp
 from sklearn.base import BaseEstimator, OneToOneFeatureMixin
 
 
-class BoltzmanMachine(BaseEstimator, OneToOneFeatureMixin):
+class BoltzmannMachine(BaseEstimator, OneToOneFeatureMixin):
     """
     https://towardsdatascience.com/hopfield-networks-neural-memory-machines-4c94be821073
     """

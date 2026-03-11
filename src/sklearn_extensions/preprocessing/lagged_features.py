@@ -10,19 +10,19 @@ class LaggedFeatureTransformer(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         if self.apply_mask:
-            X_result = X[:-self.lead_time, :]
+            X_result = X[:-self.lag_time, :]
         else:
             X_result = self.full_like(X, np.nan)
-            X_result[self.lead_time:, :] = X[:-self.lead_time, :]
+            X_result[self.lag_time:, :] = X[:-self.lag_time, :]
 
-        return y_result
+        return X_result
     
     def transform_target(self, y):
         if self.apply_mask:
-            y_result = y[self.lead_time:]
+            y_result = y[self.lag_time:]
         else:
-            y_result = self.full_like(y, np.nan)
-            y_result[self.lead_time:, :] = y[self.lead_time:, :]
+            y_result = np.full_like(y, np.nan)
+            y_result[self.lag_time:, :] = y[self.lag_time:, :]
 
         return y_result
     
