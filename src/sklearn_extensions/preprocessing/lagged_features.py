@@ -1,3 +1,4 @@
+import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class LaggedFeatureTransformer(BaseEstimator, TransformerMixin):
@@ -12,7 +13,7 @@ class LaggedFeatureTransformer(BaseEstimator, TransformerMixin):
         if self.apply_mask:
             X_result = X[:-self.lag_time, :]
         else:
-            X_result = self.full_like(X, np.nan)
+            X_result = np.full_like(X, np.nan, dtype=float)
             X_result[self.lag_time:, :] = X[:-self.lag_time, :]
 
         return X_result
@@ -21,7 +22,7 @@ class LaggedFeatureTransformer(BaseEstimator, TransformerMixin):
         if self.apply_mask:
             y_result = y[self.lag_time:]
         else:
-            y_result = np.full_like(y, np.nan)
+            y_result = np.full_like(y, np.nan, dtype=float)
             y_result[self.lag_time:, :] = y[self.lag_time:, :]
 
         return y_result

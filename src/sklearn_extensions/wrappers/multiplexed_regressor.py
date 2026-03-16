@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.utils.validation import _is_fitted
-from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error
+from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error, accuracy_score, f1_score
 
 class MultiplexedRegressor(BaseEstimator, RegressorMixin):
     def __init__(self, regressors, classifier, fit_on_predictions = False, verbose=False):

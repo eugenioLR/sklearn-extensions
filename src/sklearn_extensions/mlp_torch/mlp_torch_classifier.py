@@ -13,7 +13,7 @@ from sklearn.model_selection import train_test_split, cross_validate, RepeatedKF
 from sklearn.metrics import *
 from .mlp_torch_model import MLPModelTorch
 
-class MLPRegressorTorch(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
+class MLPClassifierTorch(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin):
     def __init__(
         self,
         input_size: int,
@@ -51,7 +51,7 @@ class MLPRegressorTorch(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin)
         self.nn_model = nn_model
 
         if loss_fn is None:
-            loss_fn = nn.MSELoss()
+            loss_fn = nn.CrossEntropyLoss()
         self.loss_fn = loss_fn
 
         match optimizer_class:
@@ -171,9 +171,8 @@ class MLPRegressorTorch(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin)
         pred = self.predict(X)
         print(y)
         return {
-            "R2": r2_score(y_true = y, y_pred = pred),
-            "RMSE": root_mean_squared_error(y_true = y, y_pred = pred),
-            "MAE": mean_absolute_error(y_true = y, y_pred = pred),
+            "ACC": accuracy_score(y_true = y, y_pred = pred),
+            "F1": f1_score(y_true = y, y_pred = pred),
         }
 
 

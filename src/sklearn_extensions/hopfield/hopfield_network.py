@@ -20,39 +20,39 @@ class BernoulliHopfieldNetwork(BaseEstimator, OneToOneFeatureMixin):
         return -0.5 * np.einsum('ni,ji,nj->n', X, self.coef_, X)
 
     def fit(self, X):
+        # Ensure we get a bipolar input
         if 0 in X:
             X = 2*X - 1
-
-        self.is_fitted_ = True
 
         self.coef_ = (1 / X.shape[0]) * X.T @ X
         np.fill_diagonal(self.coef_, 0)
 
+        self.is_fitted_ = True
         return self
 
     def _update_network(self, X):
         if self.synchronous:
             activation_weight = np.einsum('ij, nj -> ni', self.coef_, X)
-            if self.bipolar_output:
-                X = 2*(activation_weight > 0).astype(int) - 1
-            else:
-                X = (activation_weight > 0).astype(int)
+            X = 2*(activation_weight > 0).astype(int) - 1
         else:
             idx_to_update = np.random.randint(X.shape[1], size=X.shape[0])
             activation_weight = np.einsum('ij, nj -> ni', self.coef_, X)[np.arange(X.shape[0]), idx_to_update]
-            if self.bipolar_output:
-                X[np.arange(X.shape[0]), idx_to_update] = 2*(activation_weight > 0).astype(int) - 1
-            else:
-                X[np.arange(X.shape[0]), idx_to_update] = (activation_weight > 0).astype(int)
+            X[np.arange(X.shape[0]), idx_to_update] = 2*(activation_weight > 0).astype(int) - 1
 
         return X
 
     def transform(self, X):
-        X_new = X.copy()
+        # Ensure we get a bipolar input
+        if 0 in X:
+            X = 2*X - 1
 
         for _ in range(self.iterations):
             if self.verbose:
-                print(self.energy(X_new))
-            X_new = self._update_network(X_new)
+                print(self.energy(X))
+            X = self._update_network(X)
 
-        return X_new
+        # If needed, convert to binary output
+        if not self.bipolar_output:
+            X = (X + 1)//2
+
+        return X

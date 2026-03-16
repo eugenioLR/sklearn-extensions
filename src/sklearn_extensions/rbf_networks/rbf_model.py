@@ -5,13 +5,13 @@ import torch
 import scipy as sp
 import numpy as np
 from sklearn.linear_model import LogisticRegression, RidgeClassifier, LinearRegression
-from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils.multiclass import unique_labels
 from sklearn.cluster import KMeans
 
 
-class RBFNNModel(ABC, BaseEstimator, ClassifierMixin):
+class RBFNNModel(ABC, BaseEstimator):
     """ """
 
     def __init__(
@@ -102,22 +102,22 @@ class RBFNNModel(ABC, BaseEstimator, ClassifierMixin):
         return self.linear_layer.predict_proba(X_rbf)
 
 
-class RBFNNClassifier(RBFNNModel):
+class RBFNNClassifier(RBFNNModel, ClassifierMixin):
     """ """
 
     def __init__(
         self,
         n_units: int,
-        probability: float = True,
+        return_probability: float = True,
         linear_layer: BaseEstimator = None,
         cluster_model: BaseEstimator = None,
         std_from_clusters: bool = False,
         random_state: int = None,
     ):
-        self.probability = probability
+        self.return_probability = return_probability
 
         if linear_layer is None:
-            if probability:
+            if return_probability:
                 linear_layer = LogisticRegression(penalty=None, random_state=random_state)
             else:
                 linear_layer = RidgeClassifier(alpha=0, solver="svd", random_state=random_state)
@@ -132,7 +132,7 @@ class RBFNNClassifier(RBFNNModel):
         )
 
 
-class RBFNNRegressor(RBFNNModel):
+class RBFNNRegressor(RBFNNModel, RegressorMixin):
     """ """
 
     def __init__(

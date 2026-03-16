@@ -29,5 +29,11 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "pytest-rerunfailures",
     "black"
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "pending: marks tests for unimplemented functionality"
 ]
