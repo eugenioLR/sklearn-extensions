@@ -45,35 +45,37 @@ class MLPModelTorch(nn.Module):
         
         match activation:
             case 'sigmoid':
-                self.activation = nn.Sigmoid()
+                activation = nn.Sigmoid()
             case 'tanh':
-                self.activation = nn.Tanh()
+                activation = nn.Tanh()
             case 'linear':
-                self.activation = lambda x: x
+                activation = lambda x: x
             case 'relu':
-                self.activation = nn.ReLU()
+                activation = nn.ReLU()
             case 'abs':
-                self.activation = torch.abs
+                activation = torch.abs
             case func if callable(func):
-                self.activation = activation
+                pass
             case _:
                 raise Exception("Use 'sigmoid', 'tanh', 'linear', 'relu', 'abs' or a lambda function.")
+        self.activation = activation
 
         match last_layer:
             case 'sigmoid':
-                self.last_layer = nn.Sigmoid()
+                last_layer = nn.Sigmoid()
             case 'tanh':
-                self.last_layer = nn.Tanh()
+                last_layer = nn.Tanh()
             case 'linear':
-                self.last_layer = lambda x: x
+                last_layer = lambda x: x
             case 'relu':
-                self.last_layer = nn.ReLU()
+                last_layer = nn.ReLU()
             case 'abs':
-                self.last_layer = torch.abs
+                last_layer = torch.abs
             case func if callable(func):
-                self.activation = activation
+                pass
             case _:
                 raise Exception("Use 'sigmoid', 'tanh', 'linear', 'relu', 'abs' or a lambda function.")
+        self.last_layer = last_layer
     
     def forward(self, x):
         x = torch.flatten(x, start_dim=1)
