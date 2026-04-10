@@ -1,7 +1,6 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Tuple
-import torch
 import scipy as sp
 import numpy as np
 from sklearn.linear_model import LogisticRegression, RidgeClassifier, LinearRegression
@@ -9,6 +8,8 @@ from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils.multiclass import unique_labels
 from sklearn.cluster import KMeans
+
+# pylint: disable=W0201
 
 
 class RBFNNModel(ABC, BaseEstimator):
@@ -56,12 +57,16 @@ class RBFNNModel(ABC, BaseEstimator):
             if self.std_from_clusters:
                 widths[idx] = 1 / X_cluster.var()
             else:
-                distance_to_centroid = sp.spatial.distance.cdist(X_cluster, centers[[idx], :])
+                distance_to_centroid = sp.spatial.distance.cdist(
+                    X_cluster, centers[[idx], :]
+                )
                 widths[idx] = np.sqrt(2 * self.n_units) / distance_to_centroid.max()
 
         return centers, widths
 
-    def _rbf_layer(self, X: np.ndarray, centers: np.ndarray, widths: np.ndarray) -> np.ndarray:
+    def _rbf_layer(
+        self, X: np.ndarray, centers: np.ndarray, widths: np.ndarray
+    ) -> np.ndarray:
         """ """
 
         distances = sp.spatial.distance.cdist(X, centers) ** 2
@@ -118,9 +123,13 @@ class RBFNNClassifier(RBFNNModel, ClassifierMixin):
 
         if linear_layer is None:
             if return_probability:
-                linear_layer = LogisticRegression(penalty=None, random_state=random_state)
+                linear_layer = LogisticRegression(
+                    penalty=None, random_state=random_state
+                )
             else:
-                linear_layer = RidgeClassifier(alpha=0, solver="svd", random_state=random_state)
+                linear_layer = RidgeClassifier(
+                    alpha=0, solver="svd", random_state=random_state
+                )
 
         super().__init__(
             n_units=n_units,

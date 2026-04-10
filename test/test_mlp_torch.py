@@ -57,19 +57,19 @@ def test_mlp_regressor_early_stopping(small_reg_data):
 
 def test_mlp_regressor_optimizers(small_reg_data):
     X, y = small_reg_data
+
     # Test SGD
     reg_sgd = MLPRegressorTorch(input_size=4, optimizer_class='sgd', optimizer_params={'lr': 0.01}, n_epochs=50, verbose=False)
     reg_sgd.fit(X, y)
     assert reg_sgd.fitted
+
     # Test Adam
     reg_adam = MLPRegressorTorch(input_size=4, optimizer_class='adam', optimizer_params={'lr': 0.01}, n_epochs=50, verbose=False)
     reg_adam.fit(X, y)
+
     # Test newton (may need special params)
-    try:
-        reg_newton = MLPRegressorTorch(input_size=4, optimizer_class='newton', n_epochs=10, verbose=False)
-        reg_newton.fit(X, y)
-    except Exception as e:
-        pytest.skip(f"Newton optimizer not fully implemented: {e}")
+    reg_newton = MLPRegressorTorch(input_size=4, optimizer_class='newton', n_epochs=10, verbose=False)
+    reg_newton.fit(X, y)
 
 def test_mlp_regressor_score_report(small_reg_data):
     X, y = small_reg_data

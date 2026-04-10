@@ -1,8 +1,9 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
+from abc import ABC
 import numpy as np
-import scipy as sp
 from sklearn.base import BaseEstimator, OneToOneFeatureMixin
+
+# pylint: disable=all
 
 
 class BernoulliBoltzmannMachine(BaseEstimator, OneToOneFeatureMixin):
@@ -16,13 +17,15 @@ class BernoulliBoltzmannMachine(BaseEstimator, OneToOneFeatureMixin):
 
     def energy(self, X_state):
         # return -0.5 * X_state.T @ self.coef_ @ X_state
-        return -0.5 * np.einsum('ni,ji,nj->n', X_state, self.coef_, X_state)
-    
-    def _log_prob_gradient(X_i):
+        return -0.5 * np.einsum("ni,ji,nj->n", X_state, self.coef_, X_state)
+
+    def _log_prob_gradient(self, X_i):
+        raise NotImplementedError
         input_dim = X_i.shape[1]
         activation = self.coef_ @ X_i
 
     def fit(self, X):
+        raise NotImplementedError
         self.is_fitted_ = True
 
         self.coef_ = np.random.uniform(0, 1, (X.shape[1], X.shape[1]))
@@ -30,21 +33,24 @@ class BernoulliBoltzmannMachine(BaseEstimator, OneToOneFeatureMixin):
 
         self.bias_ = np.zeros()
 
-        # X_bias = np.concatenate([X, np.ones((X.shape[0], self.hidden_units))])
-        # self.coef_ = (1 / X.shape[0]) * X_bias.T @ X_bias
-        # np.fill_diagonal(self.coef_, 0)
+        X_bias = np.concatenate([X, np.ones((X.shape[0], self.hidden_units))])
+        self.coef_ = (1 / X.shape[0]) * X_bias.T @ X_bias
+        np.fill_diagonal(self.coef_, 0)
 
         return self
 
     def _update_network(self, X):
+        raise NotImplementedError
         X_new = X
 
         for data_new_i, X_i in enumerate(X):
             X_i_bias = np.concatenate([X_i, np.ones(self.hidden_units)])
             idx_to_update = np.random.randint(X_i.shape[0])
             activation_weight = self.coef_[idx_to_update, :] @ X_i_bias
-            X_new[data_i, idx_to_update] = 2*(activation_weight > 0).astype(int) - 1
-        
+            X_new[data_new_i, idx_to_update] = (
+                2 * (activation_weight > 0).astype(int) - 1
+            )
+
         return X_new
 
     def transform(self, X):

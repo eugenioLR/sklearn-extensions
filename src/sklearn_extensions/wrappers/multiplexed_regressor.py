@@ -3,10 +3,11 @@ from __future__ import annotations
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.utils.validation import _is_fitted
-from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error, accuracy_score, f1_score
+from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error
+
 
 class MultiplexedRegressor(BaseEstimator, RegressorMixin):
-    def __init__(self, regressors, classifier, fit_on_predictions = False, verbose=False):
+    def __init__(self, regressors, classifier, fit_on_predictions=False, verbose=False):
         self.regressors = regressors
         self.classifier = classifier
         self.fit_on_predictions = fit_on_predictions
@@ -30,7 +31,7 @@ class MultiplexedRegressor(BaseEstimator, RegressorMixin):
                 print(f"{np.count_nonzero(mask)} points for class {idx}")
 
         return self
-    
+
     def predict(self, X):
         pred_vector = np.empty(X.shape[0])
 
@@ -44,22 +45,29 @@ class MultiplexedRegressor(BaseEstimator, RegressorMixin):
                 print(f"{np.count_nonzero(mask)} points for class {idx}")
 
         return pred_vector
-    
+
     def predict_class(self, X):
         return self.classifier.predict(X)
 
     def score_class(self, X, y):
-        return accuracy_score(y_true = y, y_pred = self.predict_class(X))
-    
-    def score(self, X, y):
-        return r2_score(y_true = y, y_pred = self.predict(X))
+        return accuracy_score(y_true=y, y_pred=self.predict_class(X))
 
-    def score_report(self, X, y):
+    def score(self, X, y, sample_weight=None):
+        return r2_score(y_true=y, y_pred=self.predict(X), sample_weight=sample_weight)
+
+    def score_report(self, X, y, sample_weight=None):
         return {
-            "R2": r2_score(y_true = y, y_pred = self.predict(X)),
-            "RMSE": root_mean_squared_error(y_true = y, y_pred = self.predict(X)),
-            "MAE": mean_absolute_error(y_true = y, y_pred = self.predict(X)),
+            "R2": r2_score(
+                y_true=y, y_pred=self.predict(X), sample_weight=sample_weight
+            ),
+            "RMSE": root_mean_squared_error(
+                y_true=y, y_pred=self.predict(X), sample_weight=sample_weight
+            ),
+            "MAE": mean_absolute_error(
+                y_true=y, y_pred=self.predict(X), sample_weight=sample_weight
+            ),
         }
+
 
 if __name__ == "__main__":
     from sklearn.datasets import *
@@ -67,8 +75,11 @@ if __name__ == "__main__":
     from sklearn.neighbors import KNeighborsRegressor
 
     X, y = make_regression(n_samples=30, n_features=4)
-    y = y + np.random.normal(0, np.abs(y).mean()*1e-3, y.shape)
-    model = MultiplexedRegressor(classifier=RidgeClassifier(), regressors=[KNeighborsRegressor(), LinearRegression()])
-    model.fit(X, y_class=1*(y > 0), y_reg=y)
+    y = y + np.random.normal(0, np.abs(y).mean() * 1e-3, y.shape)
+    model = MultiplexedRegressor(
+        classifier=RidgeClassifier(),
+        regressors=[KNeighborsRegressor(), LinearRegression()],
+    )
+    model.fit(X, y_class=1 * (y > 0), y_reg=y)
 
     print(model.score(X, y))
