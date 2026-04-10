@@ -1,6 +1,7 @@
 """ """
 
 from __future__ import annotations
+from abc import ABC
 import copy
 from functools import reduce
 import torch
@@ -94,7 +95,7 @@ class MLPArchitectureTorch(nn.Module):
         return x
 
 
-class MLPModelTorch(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
+class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
     """ """
 
     def __init__(

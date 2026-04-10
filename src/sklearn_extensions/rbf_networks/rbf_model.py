@@ -121,7 +121,7 @@ class RBFNNClassifier(RBFNNModel, ClassifierMixin):
 
         if linear_layer is None:
             if return_probability:
-                linear_layer = LogisticRegression(penalty=None, random_state=random_state)
+                linear_layer = LogisticRegression(random_state=random_state)
             else:
                 linear_layer = RidgeClassifier(alpha=0, solver="svd", random_state=random_state)
 
