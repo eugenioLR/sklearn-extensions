@@ -86,3 +86,5 @@ from sklearn.decomposition import KernelPCA
 from sklearn.manifold import TSNE
 from sklearn.manifold import Isomap
 from sklearn.manifold import SpectralEmbedding
+
+from .models import *

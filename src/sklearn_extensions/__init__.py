@@ -1,5 +1,6 @@
-from .hopfield import *
-from .mlp_torch import *
-from .preprocessing import *
-from .rbf_networks import *
-from .wrappers import *
+from . import models
+from . import preprocessing
+from . import wrappers
+from . import model_zoo
+
+
