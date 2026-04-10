@@ -33,6 +33,7 @@ All classes in this package expose the standard scikit-learn interface (`fit`, `
 ## Contributing
 
 Contributions are welcome. Please open an issue or submit a pull request on [GitHub](https://github.com/eugenioLR/sklearn-extensions). Ensure that new components adhere to scikit-learn API conventions and include appropriate unit tests.
+
 Since this repository is meant as a collection of miscellanous modules for machine learning, the novelty and applicability of the proposals will not be as relevant of a requirement for inclusion in the repository.
 
 ## License

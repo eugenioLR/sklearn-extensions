@@ -1,10 +1,16 @@
 def test_top_level_imports():
     import sklearn_extensions
-    assert hasattr(sklearn_extensions, 'hopfield')
     assert hasattr(sklearn_extensions, 'preprocessing')
-    assert hasattr(sklearn_extensions, 'rbf_networks')
-    assert hasattr(sklearn_extensions, 'mlp_torch')
     assert hasattr(sklearn_extensions, 'wrappers')
+    assert hasattr(sklearn_extensions, 'model_zoo')
+    assert hasattr(sklearn_extensions, 'models')
+
+    from sklearn_extensions import models
+    assert hasattr(sklearn_extensions, 'elm')
+    assert hasattr(sklearn_extensions, 'hopfield')
+    assert hasattr(sklearn_extensions, 'mlp_torch')
+    assert hasattr(sklearn_extensions, 'rbfnn')
+
 
 def test_model_zoo_imports():
     from sklearn_extensions import model_zoo
