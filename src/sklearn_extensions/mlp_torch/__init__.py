@@ -1,3 +1,3 @@
-from .mlp_torch_model import MLPModelTorch
+from .mlp_torch_model import MLPArchitectureTorch, MLPModelTorch
 from .mlp_torch_regressor import MLPRegressorTorch
 from .mlp_torch_classifier import MLPClassifierTorch

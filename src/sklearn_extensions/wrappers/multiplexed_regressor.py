@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.utils.validation import _is_fitted
 from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error
+from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
 
 class MultiplexedRegressor(BaseEstimator, RegressorMixin):
@@ -14,6 +15,11 @@ class MultiplexedRegressor(BaseEstimator, RegressorMixin):
         self.verbose = verbose
 
     def fit(self, X, y_class, y_reg):
+        X, y_class = check_X_y(X, y_class)
+        self.classes_ = unique_labels(y_class)
+        X, y_reg = check_X_y(X, y_reg, y_numeric=True)
+        self.n_features_in_ = X.shape[1]
+
         if not _is_fitted(self.classifier):
             self.classifier = self.classifier.fit(X, y_class)
 
@@ -29,10 +35,14 @@ class MultiplexedRegressor(BaseEstimator, RegressorMixin):
 
             if self.verbose:
                 print(f"{np.count_nonzero(mask)} points for class {idx}")
-
+        
+        self.is_fitted_ = True
         return self
 
     def predict(self, X):
+        check_is_fitted()
+        X = check_array(X)
+
         pred_vector = np.empty(X.shape[0])
 
         pred_class = self.predict_class(X)
@@ -47,25 +57,23 @@ class MultiplexedRegressor(BaseEstimator, RegressorMixin):
         return pred_vector
 
     def predict_class(self, X):
+        X = check_array(X)
         return self.classifier.predict(X)
 
     def score_class(self, X, y):
+        X, y = check_X_y(X, y)
         return accuracy_score(y_true=y, y_pred=self.predict_class(X))
 
     def score(self, X, y, sample_weight=None):
+        X, y = check_X_y(X, y)
         return r2_score(y_true=y, y_pred=self.predict(X), sample_weight=sample_weight)
 
     def score_report(self, X, y, sample_weight=None):
+        X, y = check_X_y(X, y)
         return {
-            "R2": r2_score(
-                y_true=y, y_pred=self.predict(X), sample_weight=sample_weight
-            ),
-            "RMSE": root_mean_squared_error(
-                y_true=y, y_pred=self.predict(X), sample_weight=sample_weight
-            ),
-            "MAE": mean_absolute_error(
-                y_true=y, y_pred=self.predict(X), sample_weight=sample_weight
-            ),
+            "R2": r2_score(y_true=y, y_pred=self.predict(X), sample_weight=sample_weight),
+            "RMSE": root_mean_squared_error(y_true=y, y_pred=self.predict(X), sample_weight=sample_weight),
+            "MAE": mean_absolute_error(y_true=y, y_pred=self.predict(X), sample_weight=sample_weight),
         }
 
 

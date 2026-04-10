@@ -10,10 +10,11 @@ import torch.optim as optim
 import torch_numopt
 import numpy as np
 import sklearn
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.model_selection import train_test_split
 
 
-class MLPArchitecturelTorch(nn.Module):
+class MLPArchitectureTorch(nn.Module):
     """ """
 
     def __init__(
@@ -39,27 +40,20 @@ class MLPArchitecturelTorch(nn.Module):
         self.layer_sizes = list(layer_sizes)
 
         self.layers = nn.ModuleList(
-            [
-                nn.Linear(size_in, size_out, device=device)
-                for size_in, size_out in zip(
-                    [flat_size] + self.layer_sizes, self.layer_sizes + [1]
-                )
-            ]
+            [nn.Linear(size_in, size_out, device=device) for size_in, size_out in zip([flat_size] + self.layer_sizes, self.layer_sizes + [1])]
         )
-        self.dropouts = nn.ModuleList(
-            [nn.Dropout(dropout_rate) for _ in self.layer_sizes]
-        )
+        self.dropouts = nn.ModuleList([nn.Dropout(dropout_rate) for _ in self.layer_sizes])
 
         match activation:
-            case 'sigmoid':
+            case "sigmoid":
                 activation = nn.Sigmoid()
-            case 'tanh':
+            case "tanh":
                 activation = nn.Tanh()
-            case 'linear':
+            case "linear":
                 activation = lambda x: x
-            case 'relu':
+            case "relu":
                 activation = nn.ReLU()
-            case 'abs':
+            case "abs":
                 activation = torch.abs
             case func if callable(func):
                 pass
@@ -68,22 +62,21 @@ class MLPArchitecturelTorch(nn.Module):
         self.activation = activation
 
         match last_layer:
-            case 'sigmoid':
+            case "sigmoid":
                 last_layer = nn.Sigmoid()
-            case 'tanh':
+            case "tanh":
                 last_layer = nn.Tanh()
-            case 'linear':
+            case "linear":
                 last_layer = lambda x: x
-            case 'relu':
+            case "relu":
                 last_layer = nn.ReLU()
-            case 'abs':
+            case "abs":
                 last_layer = torch.abs
             case func if callable(func):
                 pass
             case _:
                 raise ValueError("Use 'sigmoid', 'tanh', 'linear', 'relu', 'abs' or a lambda function.")
         self.last_layer = last_layer
-    
 
     def forward(self, x):
         x = torch.flatten(x, start_dim=1)
@@ -130,7 +123,7 @@ class MLPModelTorch(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         self.last_layer = last_layer
         self.dropout_rate = dropout_rate
         if nn_model is None:
-            nn_model = MLPArchitecturelTorch(
+            nn_model = MLPArchitectureTorch(
                 input_size=input_size,
                 layer_sizes=layer_sizes,
                 activation=activation,
@@ -149,16 +142,12 @@ class MLPModelTorch(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                 if optimizer_params is None:
                     optimizer_params = {"lr": 1e-5}
 
-                self.optimizer = optim.SGD(
-                    self.nn_model.parameters(), **optimizer_params
-                )
+                self.optimizer = optim.SGD(self.nn_model.parameters(), **optimizer_params)
             case "adam":
                 if optimizer_params is None:
                     optimizer_params = {"lr": 1e-5}
 
-                self.optimizer = optim.Adam(
-                    self.nn_model.parameters(), **optimizer_params
-                )
+                self.optimizer = optim.Adam(self.nn_model.parameters(), **optimizer_params)
             case "newton":
                 if optimizer_params is None:
                     optimizer_params = {
@@ -167,9 +156,7 @@ class MLPModelTorch(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                         "line_search_cond": "armijo",
                     }
 
-                self.optimizer = torch_numopt.NewtonLS(
-                    self.nn_model, **optimizer_params
-                )
+                self.optimizer = torch_numopt.NewtonLS(self.nn_model, **optimizer_params)
             case "lm":
                 if optimizer_params is None:
                     optimizer_params = {
@@ -178,17 +165,13 @@ class MLPModelTorch(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
                         "line_search_cond": "armijo",
                     }
 
-                self.optimizer = torch_numopt.LevenbergMarquardtLS(
-                    self.nn_model, **optimizer_params
-                )
+                self.optimizer = torch_numopt.LevenbergMarquardtLS(self.nn_model, **optimizer_params)
             case type():
                 if issubclass(optimizer_class, optim.Optimizer):
                     if optimizer_params is None:
                         optimizer_params = {"lr": 1e-5}
 
-                    self.optimizer = optimizer_class(
-                        self.nn_model.parameters(), lr=1e-5
-                    )
+                    self.optimizer = optimizer_class(self.nn_model.parameters(), lr=1e-5)
                 elif issubclass(optimizer_class, torch_numopt.CustomOptimizer):
                     if optimizer_params is None:
                         optimizer_params = {
@@ -199,9 +182,7 @@ class MLPModelTorch(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
 
                     self.optimizer = optimizer_class(self.nn_model, **optimizer_params)
             case _:
-                raise ValueError(
-                    "Expected `optimizer_class`'sgd', 'adam', 'newton' or a type."
-                )
+                raise ValueError("Expected `optimizer_class`'sgd', 'adam', 'newton' or a type.")
 
         self.optimizer_class = optimizer_class
         self.optimizer_params = optimizer_params
@@ -212,21 +193,13 @@ class MLPModelTorch(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
         self.n_epochs = n_epochs
         self.verbose = verbose
         self.info_freq = info_freq
-        self.fitted = False
         self.history = None
 
-    def __sklearn_is_fitted__(self):
-        return self.fitted
-
-    def predict(self, X):
-        self.nn_model.eval()
-        X = torch.tensor(X, device=self.device, dtype=torch.float32)
-        return self.nn_model(X).detach().cpu().numpy()
-
     def fit(self, X, y):
-        X_train, X_val, y_train, y_val = train_test_split(
-            X, y, test_size=self.val_size, shuffle=True
-        )
+        X, y = check_X_y(X, y)
+        self.n_features_in_ = X.shape[1]
+        
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=self.val_size, shuffle=True)
 
         X_train = torch.tensor(X_train, device=self.device, dtype=torch.float32)
         y_train = torch.tensor(y_train, device=self.device, dtype=torch.float32)
@@ -273,17 +246,19 @@ class MLPModelTorch(sklearn.base.BaseEstimator, sklearn.base.RegressorMixin):
             elif patience > 0:
                 patience -= 1
             else:
-                print(
-                    f"Epoch {epoch+1:6d}/{self.n_epochs}: Train loss: {train_loss:3.5f}, Val loss: {val_loss:3.5f}, Best loss: {best_mse:3.5f}"
-                )
+                print(f"Epoch {epoch+1:6d}/{self.n_epochs}: Train loss: {train_loss:3.5f}, Val loss: {val_loss:3.5f}, Best loss: {best_mse:3.5f}")
                 break
 
             if self.verbose and epoch % self.info_freq == 0:
-                print(
-                    f"Epoch {epoch+1:6d}/{self.n_epochs}: Train loss: {train_loss:3.5f}, Val loss: {val_loss:3.5f}, Best loss: {best_mse:3.5f}"
-                )
+                print(f"Epoch {epoch+1:6d}/{self.n_epochs}: Train loss: {train_loss:3.5f}, Val loss: {val_loss:3.5f}, Best loss: {best_mse:3.5f}")
 
         self.nn_model.load_state_dict(best_weights)
-        self.fitted = True
 
+        self.is_fitted_ = True
         return self
+
+    def predict(self, X):
+        self.nn_model.eval()
+        X = torch.tensor(X, device=self.device, dtype=torch.float32)
+        return self.nn_model(X).detach().cpu().numpy()
+

@@ -11,6 +11,8 @@ class LaggedFeatureTransformer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        X = check_array(X)
+        self.n_features_in_ = X.shape[1]
         if self.apply_mask:
             X_result = X[: -self.lag_time, :]
         else:

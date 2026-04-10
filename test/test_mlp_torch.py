@@ -4,11 +4,11 @@ import torch
 import torch.optim as optim
 from sklearn.datasets import make_regression, make_classification
 from sklearn.metrics import r2_score, accuracy_score
-from sklearn_extensions.mlp_torch import MLPModelTorch, MLPRegressorTorch, MLPClassifierTorch
+from sklearn_extensions.mlp_torch import MLPArchitectureTorch, MLPRegressorTorch, MLPClassifierTorch
 
-# ----- MLPModelTorch -----
+# ----- MLPArchitectureTorch -----
 def test_mlp_model_init():
-    model = MLPModelTorch(input_size=5, layer_sizes=[10, 5], activation='relu', last_layer='linear')
+    model = MLPArchitectureTorch(input_size=5, layer_sizes=[10, 5], activation='relu', last_layer='linear')
     assert isinstance(model, torch.nn.Module)
     # Count layers: input->10, 10->5, 5->1 = 3 linear layers
     assert len(model.layers) == 3
@@ -18,7 +18,7 @@ def test_mlp_model_init():
     assert out.shape == (2, 1)
 
 def test_mlp_model_activations():
-    model = MLPModelTorch(input_size=3, layer_sizes=[4], activation='tanh', last_layer='sigmoid')
+    model = MLPArchitectureTorch(input_size=3, layer_sizes=[4], activation='tanh', last_layer='sigmoid')
     x = torch.randn(2, 3)
     out = model(x)
     assert torch.all((out >= 0) & (out <= 1))  # sigmoid output
@@ -35,14 +35,12 @@ def test_mlp_regressor_init():
     assert reg.input_size == 4
     assert reg.layer_sizes == [8, 4]
     assert reg.n_epochs == 10
-    assert reg.fitted is False
 
 @pytest.mark.flaky(reruns=10)
 def test_mlp_regressor_fit_predict(small_reg_data):
     X, y = small_reg_data
     reg = MLPRegressorTorch(input_size=4, layer_sizes=[8], n_epochs=100, verbose=False, patience=10)
     reg.fit(X, y.ravel())
-    assert reg.fitted is True
     preds = reg.predict(X)
     assert preds.shape == (50, 1)
     # Check that loss decreased (rough check)
@@ -61,7 +59,6 @@ def test_mlp_regressor_optimizers(small_reg_data):
     # Test SGD
     reg_sgd = MLPRegressorTorch(input_size=4, optimizer_class='sgd', optimizer_params={'lr': 0.01}, n_epochs=50, verbose=False)
     reg_sgd.fit(X, y)
-    assert reg_sgd.fitted
 
     # Test Adam
     reg_adam = MLPRegressorTorch(input_size=4, optimizer_class='adam', optimizer_params={'lr': 0.01}, n_epochs=50, verbose=False)
@@ -88,14 +85,13 @@ def small_class_data():
 def test_mlp_classifier_init():
     clf = MLPClassifierTorch(input_size=4, layer_sizes=[8, 4], n_epochs=10, verbose=False)
     assert clf.input_size == 4
-    assert isinstance(clf.nn_model, MLPModelTorch)
+    assert isinstance(clf.nn_model, MLPArchitectureTorch)
 
 @pytest.mark.skip
 def test_mlp_classifier_fit_predict(small_class_data):
     X, y = small_class_data
     clf = MLPClassifierTorch(input_size=4, layer_sizes=[8], n_epochs=100, verbose=False, patience=10)
     clf.fit(X, y.ravel())
-    assert clf.fitted is True
     preds = clf.predict(X)
     assert preds.shape == (50, 1)
     # Accuracy should be decent (overfitting small data)

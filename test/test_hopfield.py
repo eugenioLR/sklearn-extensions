@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from sklearn_extensions.hopfield import BernoulliHopfieldNetwork, BernoulliBoltzmannMachine
+from sklearn_extensions.hopfield import BernoulliHopfieldNetwork, BernoulliBoltzmannMachine, BernoulliDBN
 
 # ----- BernoulliHopfieldNetwork -----
 def test_hopfield_init():
@@ -8,7 +8,7 @@ def test_hopfield_init():
     assert h.iterations == 5
     assert h.synchronous is True
     assert h.verbose is False
-    assert bipolar_output is False
+    assert h.bipolar_output is False
 
 def test_hopfield_fit():
     X = np.array([[0, 1, 0], [1, 0, 1]])  # two patterns

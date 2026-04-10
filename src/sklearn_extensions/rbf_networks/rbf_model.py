@@ -57,16 +57,12 @@ class RBFNNModel(ABC, BaseEstimator):
             if self.std_from_clusters:
                 widths[idx] = 1 / X_cluster.var()
             else:
-                distance_to_centroid = sp.spatial.distance.cdist(
-                    X_cluster, centers[[idx], :]
-                )
+                distance_to_centroid = sp.spatial.distance.cdist(X_cluster, centers[[idx], :])
                 widths[idx] = np.sqrt(2 * self.n_units) / distance_to_centroid.max()
 
         return centers, widths
 
-    def _rbf_layer(
-        self, X: np.ndarray, centers: np.ndarray, widths: np.ndarray
-    ) -> np.ndarray:
+    def _rbf_layer(self, X: np.ndarray, centers: np.ndarray, widths: np.ndarray) -> np.ndarray:
         """ """
 
         distances = sp.spatial.distance.cdist(X, centers) ** 2
@@ -79,11 +75,13 @@ class RBFNNModel(ABC, BaseEstimator):
         X, y = check_X_y(X, y)
         if self.classification:
             self.classes_ = unique_labels(y)
+        self.n_features_in_ = X.shape[1]
 
         self.centers_, self.widths_ = self._fit_clustering(X)
         X_rbf = self._rbf_layer(X, self.centers_, self.widths_)
         self.linear_layer = self.linear_layer.fit(X_rbf, y)
 
+        self.is_fitted_ = True
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
@@ -123,13 +121,9 @@ class RBFNNClassifier(RBFNNModel, ClassifierMixin):
 
         if linear_layer is None:
             if return_probability:
-                linear_layer = LogisticRegression(
-                    penalty=None, random_state=random_state
-                )
+                linear_layer = LogisticRegression(penalty=None, random_state=random_state)
             else:
-                linear_layer = RidgeClassifier(
-                    alpha=0, solver="svd", random_state=random_state
-                )
+                linear_layer = RidgeClassifier(alpha=0, solver="svd", random_state=random_state)
 
         super().__init__(
             n_units=n_units,

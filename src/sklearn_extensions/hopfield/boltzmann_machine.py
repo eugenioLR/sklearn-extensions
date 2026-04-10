@@ -47,9 +47,7 @@ class BernoulliBoltzmannMachine(BaseEstimator, OneToOneFeatureMixin):
             X_i_bias = np.concatenate([X_i, np.ones(self.hidden_units)])
             idx_to_update = np.random.randint(X_i.shape[0])
             activation_weight = self.coef_[idx_to_update, :] @ X_i_bias
-            X_new[data_new_i, idx_to_update] = (
-                2 * (activation_weight > 0).astype(int) - 1
-            )
+            X_new[data_new_i, idx_to_update] = 2 * (activation_weight > 0).astype(int) - 1
 
         return X_new
 

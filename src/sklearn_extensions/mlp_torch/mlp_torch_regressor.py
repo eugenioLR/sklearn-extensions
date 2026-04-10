@@ -1,8 +1,8 @@
 from __future__ import annotations
 from sklearn.base import RegressorMixin
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
-from torch import optim
-from torch import nn
+from torch import optim, nn
 from .mlp_torch_model import MLPModelTorch
 
 

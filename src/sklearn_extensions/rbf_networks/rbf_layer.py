@@ -13,9 +13,7 @@ class RBFLayer(nn.Module):
         self.out_size = out_size
 
         if centers is None:
-            centers = torch.nn.init.uniform_(
-                torch.empty((input_size, out_size), device=device)
-            )
+            centers = torch.nn.init.uniform_(torch.empty((input_size, out_size), device=device))
         elif not isinstance(centers, torch.Tensor):
             centers = torch.Tensor(centers, device=device)
 
@@ -42,9 +40,7 @@ class RBFLayer(nn.Module):
             X = X[indices]
 
         cluster_model = cluster_model.fit(X)
-        self.centers.data = torch.Tensor(
-            cluster_model.cluster_centers_.T, device=self.device
-        )
+        self.centers.data = torch.Tensor(cluster_model.cluster_centers_.T, device=self.device)
 
         if width_init == "std":
             cluster_idx = cluster_model.predict(X)
@@ -53,9 +49,7 @@ class RBFLayer(nn.Module):
             cluster_idx_sorted = cluster_idx.copy()
             cluster_idx_sorted.sort()
             X_sorted = X[cluster_idx.argsort()]
-            X_grouped = np.split(
-                X_sorted, np.unique(cluster_idx_sorted, return_index=True)[1][1:]
-            )
+            X_grouped = np.split(X_sorted, np.unique(cluster_idx_sorted, return_index=True)[1][1:])
             for idx, X_cluster in enumerate(X_grouped):
                 self.widths.data[idx] = 1 / X_cluster.var()
 
@@ -66,21 +60,13 @@ class RBFLayer(nn.Module):
             cluster_idx_sorted = cluster_idx.copy()
             cluster_idx_sorted.sort()
             X_sorted = X[cluster_idx.argsort()]
-            X_grouped = np.split(
-                X_sorted, np.unique(cluster_idx_sorted, return_index=True)[1][1:]
-            )
+            X_grouped = np.split(X_sorted, np.unique(cluster_idx_sorted, return_index=True)[1][1:])
             for idx, X_cluster in enumerate(X_grouped):
-                distance_to_centroid = sp.spatial.distance.cdist(
-                    X_cluster, cluster_model.cluster_centers_[[idx], :]
-                )
-                self.widths.data[idx] = (
-                    np.sqrt(2 * self.out_size) / distance_to_centroid.max()
-                )
+                distance_to_centroid = sp.spatial.distance.cdist(X_cluster, cluster_model.cluster_centers_[[idx], :])
+                self.widths.data[idx] = np.sqrt(2 * self.out_size) / distance_to_centroid.max()
 
         elif width_init != "random":
-            raise ValueError(
-                "Width initialization method not found. Try 'random', 'std' or 'maxdist'."
-            )
+            raise ValueError("Width initialization method not found. Try 'random', 'std' or 'maxdist'.")
 
         self.centers.requires_grad = not freeze_centers
         self.widths.requires_grad = not freeze_widths

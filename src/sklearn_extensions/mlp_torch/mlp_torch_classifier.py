@@ -2,6 +2,7 @@ from __future__ import annotations
 from torch import optim, nn
 import sklearn
 from sklearn.metrics import accuracy_score, f1_score
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from .mlp_torch_model import MLPModelTorch
 
 

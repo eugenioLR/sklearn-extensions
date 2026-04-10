@@ -37,3 +37,7 @@ dev = [
 markers = [
     "pending: marks tests for unimplemented functionality"
 ]
+
+[tool.black]
+line-length = 150
+target-version = ['py311']
