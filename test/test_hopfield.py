@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from sklearn_extensions.hopfield import BernoulliHopfieldNetwork, BernoulliBoltzmannMachine, BernoulliDBN
+from sklearn_extensions.models.hopfield import BernoulliHopfieldNetwork, BernoulliBoltzmannMachine, BernoulliDBN
 
 # ----- BernoulliHopfieldNetwork -----
 def test_hopfield_init():

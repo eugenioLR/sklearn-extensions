@@ -4,7 +4,7 @@ import torch
 import torch.optim as optim
 from sklearn.datasets import make_regression, make_classification
 from sklearn.metrics import r2_score, accuracy_score
-from sklearn_extensions.mlp_torch import MLPArchitectureTorch, MLPRegressorTorch, MLPClassifierTorch
+from sklearn_extensions.models.mlp_torch import MLPArchitectureTorch, MLPRegressorTorch, MLPClassifierTorch
 
 # ----- MLPArchitectureTorch -----
 def test_mlp_model_init():
