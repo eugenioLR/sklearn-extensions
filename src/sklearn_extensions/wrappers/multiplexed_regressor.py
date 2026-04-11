@@ -3,8 +3,9 @@ from __future__ import annotations
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.utils.validation import _is_fitted
-from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error
+from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error, accuracy_score
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from sklearn.utils.multiclass import unique_labels
 
 
 class MultiplexedRegressor(BaseEstimator, RegressorMixin):
@@ -40,7 +41,7 @@ class MultiplexedRegressor(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X):
-        check_is_fitted()
+        check_is_fitted(self)
         X = check_array(X)
 
         pred_vector = np.empty(X.shape[0])
