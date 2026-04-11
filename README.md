@@ -38,4 +38,4 @@ Since this repository is meant as a collection of miscellanous modules for machi
 
 ## License
 
-This project is distributed under the terms of the MIT License. See the [LICENCE](LICENCE) file for details.
+This project is distributed under the terms of the GPL3 Public License. See the [LICENCE](LICENCE) file for details.
