@@ -1,10 +1,10 @@
 from __future__ import annotations
 import numpy as np
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.utils.validation import check_array, check_is_fitted
 from sklearn.base import BaseEstimator, OneToOneFeatureMixin
 
-
 # pylint: disable=W0201
+
 class BernoulliHopfieldNetwork(BaseEstimator, OneToOneFeatureMixin):
     """
     https://towardsdatascience.com/hopfield-networks-neural-memory-machines-4c94be821073
@@ -24,8 +24,11 @@ class BernoulliHopfieldNetwork(BaseEstimator, OneToOneFeatureMixin):
         self.n_features_in_ = X.shape[1]
 
         # Ensure we get a bipolar input
-        if 0 in X:
+        unique_values = set(np.unique(X))
+        if unique_values.issubset({0, 1}):
             X = 2 * X - 1
+        elif not unique_values.issubset({-1, 1}):
+            raise ValueError("Input must be either binary ({0,1}) or bipolar ({-1, 1}).")
 
         self.coef_ = (1 / X.shape[0]) * X.T @ X
         np.fill_diagonal(self.coef_, 0)
@@ -49,12 +52,16 @@ class BernoulliHopfieldNetwork(BaseEstimator, OneToOneFeatureMixin):
         X = check_array(X)
 
         # Ensure we get a bipolar input
-        if 0 in X:
+        unique_values = set(np.unique(X))
+        if unique_values.issubset({0, 1}):
             X = 2 * X - 1
+        elif not unique_values.issubset({-1, 1}):
+            raise ValueError("Input must be either binary ({0,1}) or bipolar ({-1, 1}).")
 
-        for _ in range(self.iterations):
+        for i in range(self.iterations):
             if self.verbose:
-                print(self.energy(X))
+                print(f"Iteration {i}: <E> = {self.energy(X).mean()}")
+
             X = self._update_network(X)
 
         # If needed, convert to binary output

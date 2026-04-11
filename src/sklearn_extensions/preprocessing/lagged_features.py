@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 
-
 class LaggedFeatureTransformer(BaseEstimator, TransformerMixin):
     def __init__(self, lag_time, apply_mask=False):
         self.lag_time = lag_time

@@ -1,12 +1,12 @@
 """ """
 
 from __future__ import annotations
+from typing import Iterable
 from abc import ABC
 import copy
 from functools import reduce
 import torch
 import torch.nn as nn
-import torch.distributions
 import torch.optim as optim
 import torch_numopt
 import numpy as np
@@ -110,6 +110,7 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
         loss_fn=None,
         dropout_rate=0,
         device="cpu",
+        train_loop_fn=None,
         patience=20,
         val_size=0.1,
         batch_size=5000,
@@ -188,6 +189,9 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
         self.optimizer_class = optimizer_class
         self.optimizer_params = optimizer_params
 
+        if train_loop_fn is None:
+            train_loop_fn = train_loop
+        self.train_loop_fn = train_loop_fn
         self.patience = patience
         self.val_size = val_size
         self.batch_size = batch_size
@@ -197,69 +201,111 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
         self.history = None
 
     def fit(self, X, y):
-        X, y = check_X_y(X, y)
+        X, y = check_X_y(X, y, multi_output=True)
         self.n_features_in_ = X.shape[1]
-        
-        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=self.val_size, shuffle=True)
 
-        X_train = torch.tensor(X_train, device=self.device, dtype=torch.float32)
-        y_train = torch.tensor(y_train, device=self.device, dtype=torch.float32)
-        X_val = torch.tensor(X_val, device=self.device, dtype=torch.float32)
-        y_val = torch.tensor(y_val, device=self.device, dtype=torch.float32)
-
-        best_mse = np.inf
-        best_weights = None
-        patience = self.patience
-        batch_start = torch.arange(0, len(X_train), self.batch_size)
-        self.history = []
-        for epoch in range(self.n_epochs):
-            # Fit network on training set
-            self.nn_model.train()
-            train_loss = 0
-            for start in batch_start:
-                X_batch = X_train[start : start + self.batch_size]
-                y_batch = y_train[start : start + self.batch_size]
-
-                pred_batch = self.nn_model.forward(X_batch)
-                loss = self.loss_fn(y_batch, pred_batch)
-                train_loss += float(loss)
-
-                self.optimizer.zero_grad()
-                loss.backward()
-                if isinstance(self.optimizer, torch_numopt.CustomOptimizer):
-                    self.optimizer.step(X_batch, y_batch, self.loss_fn)
-                else:
-                    self.optimizer.step()
-            train_loss /= len(batch_start)
-
-            # Evaluate on validation set
-            self.nn_model.eval()
-
-            pred_val = self.nn_model.forward(X_val)
-            val_loss = float(self.loss_fn(y_val, pred_val))
-            self.history.append(val_loss)
-
-            # save best weights each epoch
-            if val_loss < best_mse:
-                best_mse = val_loss
-                best_weights = copy.deepcopy(self.nn_model.state_dict())
-                patience = self.patience
-            elif patience > 0:
-                patience -= 1
-            else:
-                print(f"Epoch {epoch+1:6d}/{self.n_epochs}: Train loss: {train_loss:3.5f}, Val loss: {val_loss:3.5f}, Best loss: {best_mse:3.5f}")
-                break
-
-            if self.verbose and epoch % self.info_freq == 0:
-                print(f"Epoch {epoch+1:6d}/{self.n_epochs}: Train loss: {train_loss:3.5f}, Val loss: {val_loss:3.5f}, Best loss: {best_mse:3.5f}")
-
-        self.nn_model.load_state_dict(best_weights)
-
+        self.history = self.train_loop_fn(
+            X,
+            y,
+            self.nn_model,
+            self.loss_fn,
+            self.optimizer,
+            self.n_epochs,
+            self.patience,
+            self.batch_size,
+            self.val_size,
+            self.device,
+            self.info_freq,
+            self.verbose,
+        )
+    
         self.is_fitted_ = True
         return self
 
     def predict(self, X):
+        check_is_fitted(self)
+        X = check_array(X)
         self.nn_model.eval()
         X = torch.tensor(X, device=self.device, dtype=torch.float32)
         return self.nn_model(X).detach().cpu().numpy()
 
+def train_loop(
+    X,
+    y,
+    nn_model,
+    loss_fn,
+    optimizer,
+    n_epochs=10000,
+    max_patience=1000,
+    tol=1e-6,
+    batch_size=100000,
+    val_size=0.1,
+    device="cpu",
+    info_freq=100,
+    verbose=False,
+) -> dict[str, Iterable]:
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=val_size, shuffle=True)
+
+    X_train = torch.tensor(X_train, device=device, dtype=torch.float32)
+    y_train = torch.tensor(y_train, device=device, dtype=torch.float32)
+    X_val = torch.tensor(X_val, device=device, dtype=torch.float32)
+    y_val = torch.tensor(y_val, device=device, dtype=torch.float32)
+
+    nn_model = nn_model.to(device)
+
+    best_error = np.inf
+    best_weights = None
+    batch_start = torch.arange(0, len(X_train), batch_size)
+    patience = max_patience
+    history = {"train_loss": [], "val_loss": []}
+    for epoch in range(n_epochs):
+        perm = torch.randperm(len(X_train))
+        X_train_shuf = X_train[perm]
+        y_train_shuf = y_train[perm]
+
+        # Fit network on training set
+        nn_model.train()
+        train_loss = 0
+        for start in batch_start:
+            X_batch = X_train_shuf[start : start + batch_size]
+            y_batch = y_train_shuf[start : start + batch_size]
+
+            pred_batch = nn_model(X_batch)
+            loss = loss_fn(y_batch, pred_batch)
+            train_loss += float(loss) * X_batch.shape[0]
+
+            loss.backward()
+            if isinstance(optimizer, torch_numopt.CustomOptimizer):
+                optimizer.step(X_batch, y_batch, loss_fn)
+            else:
+                optimizer.step()
+            optimizer.zero_grad()
+
+        train_loss /= X_train.shape[0]
+        history["train_loss"].append(train_loss)
+
+        # Evaluate on validation set
+        nn_model.eval()
+
+        with torch.no_grad():
+            pred_val = nn_model(X_val)
+            val_loss = float(loss_fn(y_val, pred_val))
+        
+        history["val_loss"].append(val_loss)
+
+        # save best weights each epoch
+        if val_loss < best_error - tol:
+            best_error = val_loss
+            best_weights = copy.deepcopy(nn_model.state_dict())
+            patience = max_patience
+        elif patience > 0:
+            patience -= 1
+        else:
+            print(f"Epoch {epoch+1:6d}/{n_epochs}: Train loss: {train_loss:3.5f}, Val loss: {val_loss:3.5f}, Best loss: {best_error:3.5f}")
+            break
+
+        if verbose and epoch % info_freq == 0:
+            print(f"Epoch {epoch+1:6d}/{n_epochs}: Train loss: {train_loss:3.5f}, Val loss: {val_loss:3.5f}, Best loss: {best_error:3.5f}")
+
+    nn_model.load_state_dict(best_weights)
+    return history

@@ -72,8 +72,8 @@ class RBFLayer(nn.Module):
         self.widths.requires_grad = not freeze_widths
 
     def forward(self, x):
-        x = x.view(x.shape + (1,))
-        centers = self.centers.view((1,) + self.centers.shape)
-        widths = self.widths.view((1,) + self.widths.shape)
+        x = x.unsqueeze(1)
+        centers = self.centers.unsqueeze(0)
+        widths = self.widths.unsqueeze(0)
 
         return torch.exp(-torch.square(x - centers).sum(axis=1) * widths)

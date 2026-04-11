@@ -1,6 +1,5 @@
 from __future__ import annotations
 from sklearn.base import RegressorMixin
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 from torch import optim, nn
 from .mlp_torch_model import MLPModelTorch
@@ -19,6 +18,7 @@ class MLPRegressorTorch(MLPModelTorch, RegressorMixin):
         loss_fn=None,
         dropout_rate=0,
         device="cpu",
+        train_loop_fn=None,
         patience=20,
         val_size=0.1,
         batch_size=5000,
@@ -40,6 +40,7 @@ class MLPRegressorTorch(MLPModelTorch, RegressorMixin):
             loss_fn,
             dropout_rate,
             device,
+            train_loop_fn,
             patience,
             val_size,
             batch_size,
@@ -50,7 +51,6 @@ class MLPRegressorTorch(MLPModelTorch, RegressorMixin):
 
     def score_report(self, X, y):
         pred = self.predict(X)
-        print(y)
         return {
             "R2": r2_score(y_true=y, y_pred=pred),
             "RMSE": root_mean_squared_error(y_true=y, y_pred=pred),

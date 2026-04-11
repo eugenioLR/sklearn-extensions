@@ -25,17 +25,10 @@ class RBFNNModel(ABC, BaseEstimator):
         random_state: int = None,
     ):
         self.n_units = n_units
-
         self.linear_layer = linear_layer
-
-        if cluster_model is None:
-            cluster_model = KMeans(n_clusters=n_units, random_state=random_state)
         self.cluster_model = cluster_model
-
         self.std_from_clusters = std_from_clusters
-
         self.classification = classification
-
         self.random_state = random_state
 
     def _fit_clustering(self, X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -69,13 +62,16 @@ class RBFNNModel(ABC, BaseEstimator):
         X_rbf = np.exp(-distances * widths)
         return X_rbf
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> RBFNNClassifier:
+    def fit(self, X: np.ndarray, y: np.ndarray) -> RBFNNModel:
         """ """
 
-        X, y = check_X_y(X, y)
+        X, y = check_X_y(X, y, multi_output=True)
         if self.classification:
             self.classes_ = unique_labels(y)
         self.n_features_in_ = X.shape[1]
+
+        if self.cluster_model is None:
+            self.cluster_model = KMeans(n_clusters=self.n_units, random_state=self.random_state)
 
         self.centers_, self.widths_ = self._fit_clustering(X)
         X_rbf = self._rbf_layer(X, self.centers_, self.widths_)
@@ -111,7 +107,7 @@ class RBFNNClassifier(RBFNNModel, ClassifierMixin):
     def __init__(
         self,
         n_units: int,
-        return_probability: float = True,
+        return_probability: bool = True,
         linear_layer: BaseEstimator = None,
         cluster_model: BaseEstimator = None,
         std_from_clusters: bool = False,
@@ -133,7 +129,7 @@ class RBFNNClassifier(RBFNNModel, ClassifierMixin):
             classification=True,
             random_state=random_state,
         )
-
+    
 
 class RBFNNRegressor(RBFNNModel, RegressorMixin):
     """ """

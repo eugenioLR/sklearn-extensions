@@ -2,7 +2,6 @@ from __future__ import annotations
 from torch import optim, nn
 import sklearn
 from sklearn.metrics import accuracy_score, f1_score
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from .mlp_torch_model import MLPModelTorch
 
 
@@ -19,6 +18,7 @@ class MLPClassifierTorch(MLPModelTorch, sklearn.base.ClassifierMixin):
         loss_fn=None,
         dropout_rate=0,
         device="cpu",
+        train_loop_fn=None,
         patience=20,
         val_size=0.1,
         batch_size=5000,
@@ -40,6 +40,7 @@ class MLPClassifierTorch(MLPModelTorch, sklearn.base.ClassifierMixin):
             loss_fn,
             dropout_rate,
             device,
+            train_loop_fn,
             patience,
             val_size,
             batch_size,
@@ -50,7 +51,6 @@ class MLPClassifierTorch(MLPModelTorch, sklearn.base.ClassifierMixin):
 
     def score_report(self, X, y):
         pred = self.predict(X)
-        print(y)
         return {
             "ACC": accuracy_score(y_true=y, y_pred=pred),
             "F1": f1_score(y_true=y, y_pred=pred),

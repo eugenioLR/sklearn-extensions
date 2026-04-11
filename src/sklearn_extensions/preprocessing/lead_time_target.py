@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 
-
 class LeadFeatureTransformer(BaseEstimator, TransformerMixin):
     def __init__(self, lead_time, flatten_output=True, apply_mask=False):
         self.lead_time = lead_time
