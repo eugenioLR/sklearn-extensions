@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sklearn-extensions"
-version = "0.0.1"
+name = "sklearn_extensions"
+version = "0.0.2"
 authors = [
   { name="Eugenio Lorente", email="eugenio.lorente@uah.es" },
 ]
@@ -22,11 +22,22 @@ dependencies = [
     "scipy",
     "pandas",
     "scikit-learn",
-    "torch"
+    "torch",
+    "torch_numopt"
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "pytest-rerunfailures",
     "black"
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "pending: marks tests for unimplemented functionality"
+]
+
+[tool.black]
+line-length = 150
+target-version = ['py311']

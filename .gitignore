@@ -175,3 +175,9 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 *.code-workspace
+
+code_dump.sh
+code_dump_test.sh
+whole_code.txt
+whole_test.txt
+.vscode
