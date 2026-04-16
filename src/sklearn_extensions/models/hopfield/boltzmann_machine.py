@@ -13,6 +13,7 @@ class BernoulliBoltzmannMachine(BaseEstimator, OneToOneFeatureMixin):
     """
 
     def __init__(self, iterations=1, learning_rate=0.1, hidden_units=10, k=1, syncronous=False):
+        raise NotImplementedError
         self.iterations = iterations
         self.hidden_units = hidden_units
         self.learning_rate = learning_rate
