@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import numpy as np
 from numbers import Integral, Real
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
@@ -13,17 +13,18 @@ class BaseExtremeLearningMachine(ABC, BaseEstimator):
         "hidden_layer_size": [Interval(Integral, 1, None, closed="left")],
         "activation": [StrOptions({"identity", "logistic", "tanh", "relu"})],
         "alpha": [Interval(Real, 0, None, closed="left"), None],
-        "linear_layer": [BaseEstimator],
+        "linear_layer": [BaseEstimator, None],
         "random_state": ["random_state"],
     }
 
+    @abstractmethod
     def __init__(
         self,
-        hidden_layer_size = 100,
-        activation = "relu",
-        alpha = None,
-        linear_layer = None,
-        random_state = None
+        hidden_layer_size,
+        activation,
+        alpha,
+        linear_layer,
+        random_state
     ):
         self.hidden_layer_size = hidden_layer_size
         self.activation = activation
@@ -51,9 +52,14 @@ class BaseExtremeLearningMachine(ABC, BaseEstimator):
         return coef_init, intercept_init
 
     def fit(self, X, y):
-        X, y = check_X_y(X, y)
+        X, y = check_X_y(X, y, multi_output=True)
         self._random_state = check_random_state(self.random_state)
         self._validate_params()
+
+        if hasattr(self, 'linear_layer_'):
+            self.linear_layer_ = self.linear_layer_
+        else:
+            self.linear_layer_ = LinearRegression() if self.linear_layer is None else self.linear_layer
 
         hidden_activation = ACTIVATIONS[self.activation]
 
@@ -62,8 +68,10 @@ class BaseExtremeLearningMachine(ABC, BaseEstimator):
         activations = safe_sparse_dot(X, self.hidden_coef_,)
         activations += self.hidden_intercept_
         hidden_activation(activations)
-        self.linear_layer = self.linear_layer.fit(activations, y)
+        self.linear_layer_ = self.linear_layer_.fit(activations, y)
 
+        if hasattr(self.linear_layer_, 'classes_'):
+            self.classes_ = self.linear_layer_.classes_
 
         self.is_fitted_ = True
         return self
@@ -76,11 +84,16 @@ class BaseExtremeLearningMachine(ABC, BaseEstimator):
         activations = safe_sparse_dot(X, self.hidden_coef_,)
         activations += self.hidden_intercept_
         hidden_activation(activations)
-        pred = self.linear_layer.predict(activations)
+        pred = self.linear_layer_.predict(activations)
 
         return pred
 
 class ELMClassifier(BaseExtremeLearningMachine, ClassifierMixin):
+    _parameter_constraints = {
+        **BaseExtremeLearningMachine._parameter_constraints,
+        "return_probability": ["boolean"]
+    }
+
     def __init__(
         self,
         hidden_layer_size = 100,
@@ -90,23 +103,7 @@ class ELMClassifier(BaseExtremeLearningMachine, ClassifierMixin):
         linear_layer = None,
         random_state = None
     ):
-
         self.return_probability = return_probability
-
-        if linear_layer is None:
-            if return_probability:
-                if alpha is None:
-                    linear_layer = LogisticRegression(random_state=random_state)
-                elif alpha == 0:
-                    linear_layer = LogisticRegression(C=np.inf, random_state=random_state)
-                else:
-                    linear_layer = LogisticRegression(C=1/alpha, random_state=random_state)
-            else:
-                if alpha is None:
-                    linear_layer = RidgeClassifier(alpha=0, solver="svd", random_state=random_state)
-                else:
-                    linear_layer = RidgeClassifier(alpha=alpha, solver="svd", random_state=random_state)
-
         super().__init__(
             hidden_layer_size,
             activation,
@@ -114,6 +111,25 @@ class ELMClassifier(BaseExtremeLearningMachine, ClassifierMixin):
             linear_layer,
             random_state,
         )
+    
+    def fit(self, X, y):
+        if self.linear_layer is None:
+            if self.return_probability:
+                if self.alpha is None:
+                    self.linear_layer_ = LogisticRegression(random_state=self.random_state)
+                elif self.alpha == 0:
+                    self.linear_layer_ = LogisticRegression(C=np.inf, random_state=self.random_state)
+                else:
+                    self.linear_layer_ = LogisticRegression(C=1/self.alpha, random_state=self.random_state)
+            else:
+                if self.alpha is None:
+                    self.linear_layer_ = RidgeClassifier(alpha=0, solver="svd", random_state=self.random_state)
+                else:
+                    self.linear_layer_ = RidgeClassifier(alpha=self.alpha, solver="svd", random_state=self.random_state)
+        else:
+            self.linear_layer_ = self.linear_layer
+        
+        return super().fit(X, y)
     
     def predict_proba(self, X):
         if not self.return_probability:
@@ -126,7 +142,7 @@ class ELMClassifier(BaseExtremeLearningMachine, ClassifierMixin):
         activations = safe_sparse_dot(X, self.hidden_coef_,)
         activations += self.hidden_intercept_
         hidden_activation(activations)
-        pred = self.linear_layer.predict_proba(activations)
+        pred = self.linear_layer_.predict_proba(activations)
 
         return pred
 
@@ -139,13 +155,6 @@ class ELMRegressor(BaseExtremeLearningMachine, RegressorMixin):
         linear_layer = None,
         random_state = None
     ):
-
-        if linear_layer is None:
-            if alpha is None:
-                linear_layer = LinearRegression()
-            else:
-                linear_layer = Ridge(alpha=alpha, random_state=random_state)
-
         super().__init__(
             hidden_layer_size,
             activation,
@@ -153,6 +162,16 @@ class ELMRegressor(BaseExtremeLearningMachine, RegressorMixin):
             linear_layer,
             random_state,
         )
+    
+    def fit(self, X, y):
+        if self.linear_layer is None:
+            if self.alpha is None:
+                self.linear_layer_ = LinearRegression()
+            else:
+                self.linear_layer_ = Ridge(alpha=self.alpha, random_state=self.random_state)
+        else:
+            self.linear_layer_ = self.linear_layer
+        return super().fit(X, y)
 
 if __name__ == "__main__":
     import sklearn

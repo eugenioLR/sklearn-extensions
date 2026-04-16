@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.utils.validation import check_array
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -8,11 +9,11 @@ class LaggedFeatureTransformer(BaseEstimator, TransformerMixin):
         self.apply_mask = apply_mask
 
     def fit(self, X, y=None, **fit_params):
+        self.n_features_in_ = X.shape[1]
         return self
 
     def transform(self, X):
         X = check_array(X)
-        self.n_features_in_ = X.shape[1]
         if self.apply_mask:
             X_result = X[: -self.lag_time, :]
         else:

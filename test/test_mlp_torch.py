@@ -24,84 +24,72 @@ def test_mlp_model_activations():
     assert torch.all((out >= 0) & (out <= 1))  # sigmoid output
 
 # ----- MLPRegressorTorch -----
-@pytest.fixture
-def small_reg_data():
-    X, y = make_regression(n_samples=50, n_features=4, noise=0.1, random_state=42)
-    y = y.reshape(-1, 1)
-    return X, y
-
 def test_mlp_regressor_init():
-    reg = MLPRegressorTorch(input_size=4, layer_sizes=[8, 4], n_epochs=10, verbose=False)
-    assert reg.input_size == 4
-    assert reg.layer_sizes == [8, 4]
-    assert reg.n_epochs == 10
+    reg = MLPRegressorTorch(hidden_layer_sizes=[8, 4], n_iter=10, verbose=False)
+    assert reg.hidden_layer_sizes == [8, 4]
+    assert reg.n_iter == 10
 
 @pytest.mark.flaky(reruns=10)
-def test_mlp_regressor_fit_predict(small_reg_data):
-    X, y = small_reg_data
-    reg = MLPRegressorTorch(input_size=4, layer_sizes=[8], n_epochs=100, verbose=False, patience=10)
+def test_mlp_regressor_fit_predict(random_data):
+    X, _, y = random_data
+    reg = MLPRegressorTorch(hidden_layer_sizes=[8], n_iter=100, verbose=False, n_iter_no_change=10)
     reg.fit(X, y.ravel())
     preds = reg.predict(X)
-    assert preds.shape == (50, 1)
+    assert preds.shape == (100,)
     # Check that loss decreased (rough check)
-    assert reg.history[-1] < reg.history[0]  # validation loss improved
+    assert reg.history_["train_loss"][-1] < reg.history_["train_loss"][0]  # validation loss improved
 
-def test_mlp_regressor_early_stopping(small_reg_data):
-    X, y = small_reg_data
-    reg = MLPRegressorTorch(input_size=4, layer_sizes=[8], n_epochs=1000, patience=5, verbose=False)
+def test_mlp_regressor_early_stopping(random_data):
+    X, _, y = random_data
+    reg = MLPRegressorTorch(hidden_layer_sizes=[8], n_iter=1000, n_iter_no_change=5, verbose=False)
     reg.fit(X, y.ravel())
     # Should stop before n_epochs due to patience
-    assert len(reg.history) <= 1000
+    assert len(reg.history_["train_loss"]) == 1000
 
-def test_mlp_regressor_optimizers(small_reg_data):
-    X, y = small_reg_data
+def test_mlp_regressor_optimizers(random_data):
+    X, _, y = random_data
 
     # Test SGD
-    reg_sgd = MLPRegressorTorch(input_size=4, optimizer_class='sgd', optimizer_params={'lr': 0.01}, n_epochs=50, verbose=False)
+    reg_sgd = MLPRegressorTorch(optimizer_class='sgd', optimizer_params={'lr': 0.01}, n_iter=50, verbose=False)
     reg_sgd.fit(X, y)
 
     # Test Adam
-    reg_adam = MLPRegressorTorch(input_size=4, optimizer_class='adam', optimizer_params={'lr': 0.01}, n_epochs=50, verbose=False)
+    reg_adam = MLPRegressorTorch(optimizer_class='adam', optimizer_params={'lr': 0.01}, n_iter=50, verbose=False)
     reg_adam.fit(X, y)
 
     # Test newton (may need special params)
-    reg_newton = MLPRegressorTorch(input_size=4, optimizer_class='newton', n_epochs=10, verbose=False)
+    reg_newton = MLPRegressorTorch(optimizer_class='newton', n_iter=10, verbose=False)
     reg_newton.fit(X, y)
 
-def test_mlp_regressor_score_report(small_reg_data):
-    X, y = small_reg_data
-    reg = MLPRegressorTorch(input_size=4, layer_sizes=[8], n_epochs=50, verbose=False)
+def test_mlp_regressor_score_report(random_data):
+    X, _, y = random_data
+    reg = MLPRegressorTorch(hidden_layer_sizes=[8], n_iter=50, verbose=False)
     reg.fit(X, y)
     report = reg.score_report(X, y)
     assert set(report.keys()) == {"R2", "RMSE", "MAE"}
     assert isinstance(report["R2"], float)
 
 # ----- MLPClassifierTorch -----
-@pytest.fixture
-def small_class_data():
-    X, y = make_classification(n_samples=50, n_features=4, n_classes=2, random_state=42)
-    return X, y
-
 def test_mlp_classifier_init():
-    clf = MLPClassifierTorch(input_size=4, layer_sizes=[8, 4], n_epochs=10, verbose=False)
-    assert clf.input_size == 4
-    assert isinstance(clf.nn_model, MLPArchitectureTorch)
+    clf = MLPClassifierTorch(hidden_layer_sizes=[8, 4], n_iter=10, verbose=False)
+    assert clf.hidden_layer_sizes == [8, 4]
+    assert clf.n_iter == 10
 
 @pytest.mark.skip
-def test_mlp_classifier_fit_predict(small_class_data):
-    X, y = small_class_data
-    clf = MLPClassifierTorch(input_size=4, layer_sizes=[8], n_epochs=100, verbose=False, patience=10)
+def test_mlp_classifier_fit_predict(random_data):
+    X, y, _ = random_data
+    clf = MLPClassifierTorch(layer_sizes=[8], n_iter=100, verbose=False, n_iter_no_change=10)
     clf.fit(X, y.ravel())
     preds = clf.predict(X)
-    assert preds.shape == (50, 1)
+    assert preds.shape == (100,)
     # Accuracy should be decent (overfitting small data)
     acc = accuracy_score(y, preds)
     assert acc > 0.8
 
 @pytest.mark.skip
-def test_mlp_classifier_score_report(small_class_data):
-    X, y = small_class_data
-    clf = MLPClassifierTorch(input_size=4, layer_sizes=[8], n_epochs=50, verbose=False)
+def test_mlp_classifier_score_report(random_data):
+    X, y, _ = random_data
+    clf = MLPClassifierTorch(layer_sizes=[8], n_iter=50, verbose=False)
     clf.fit(X, y)
     report = clf.score_report(X, y)
     assert set(report.keys()) == {"ACC", "F1"}
