@@ -8,46 +8,49 @@ from .mlp_torch_model import MLPModelTorch
 class MLPClassifierTorch(MLPModelTorch, sklearn.base.ClassifierMixin):
     def __init__(
         self,
-        input_size: int,
         nn_model=None,
-        layer_sizes: list = None,
-        optimizer_class=optim.Adam,
-        optimizer_params=None,
+        hidden_layer_sizes=(100,),
         activation="relu",
-        last_layer="linear",
+        optimizer_class="adam",
+        optimizer_params=None,
+        batch_size="auto",
+        n_iter=100000,
+        last_layer="logistic",
         loss_fn=None,
         dropout_rate=0,
         device="cpu",
         train_loop_fn=None,
-        patience=20,
-        val_size=0.1,
-        batch_size=5000,
-        n_epochs=100000,
-        verbose=True,
+        tol=1e-4,
+        validation_fraction=0.1,
+        n_iter_no_change=20,
+        verbose=False,
         info_freq=1000,
+        random_state=None
     ):
-        if loss_fn is None:
-            loss_fn = nn.CrossEntropyLoss()
-
         super().__init__(
-            input_size,
-            nn_model,
-            layer_sizes,
-            optimizer_class,
-            optimizer_params,
-            activation,
-            last_layer,
-            loss_fn,
-            dropout_rate,
-            device,
-            train_loop_fn,
-            patience,
-            val_size,
-            batch_size,
-            n_epochs,
-            verbose,
-            info_freq,
+            nn_model=nn_model,
+            hidden_layer_sizes=hidden_layer_sizes,
+            activation=activation,
+            optimizer_class=optimizer_class,
+            optimizer_params=optimizer_params,
+            batch_size=batch_size,
+            n_iter=n_iter,
+            last_layer=last_layer,
+            loss_fn=loss_fn,
+            dropout_rate=dropout_rate,
+            device=device,
+            train_loop_fn=train_loop_fn,
+            tol=tol,
+            validation_fraction=validation_fraction,
+            n_iter_no_change=n_iter_no_change,
+            verbose=verbose,
+            info_freq=info_freq,
+            random_state=random_state
         )
+
+    def fit(self, X, y):
+        self.loss_fn_ = nn.CrossEntropyLoss() if self.loss_fn is None else self.loss_fn
+        return super().fit(X, y)
 
     def score_report(self, X, y):
         pred = self.predict(X)

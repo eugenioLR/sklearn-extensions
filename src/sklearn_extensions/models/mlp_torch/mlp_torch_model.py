@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 from typing import Iterable
-from abc import ABC
+from numbers import Integral, Real 
+from abc import ABC, abstractmethod
 import copy
 from functools import reduce
 import torch
@@ -11,6 +12,8 @@ import torch.optim as optim
 import torch_numopt
 import numpy as np
 import sklearn
+from sklearn.utils import check_random_state
+from sklearn.utils._param_validation import Interval, StrOptions, Options
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.model_selection import train_test_split
 
@@ -37,7 +40,7 @@ class MLPArchitectureTorch(nn.Module):
 
         self.layers = []
         if layer_sizes is None:
-            layer_sizes = [20, 15]
+            layer_sizes = [100]
         self.layer_sizes = list(layer_sizes)
 
         self.layers = nn.ModuleList(
@@ -46,11 +49,11 @@ class MLPArchitectureTorch(nn.Module):
         self.dropouts = nn.ModuleList([nn.Dropout(dropout_rate) for _ in self.layer_sizes])
 
         match activation:
-            case "sigmoid":
+            case "sigmoid"|"logistic":
                 activation = nn.Sigmoid()
             case "tanh":
                 activation = nn.Tanh()
-            case "linear":
+            case "linear"|"identity":
                 activation = lambda x: x
             case "relu":
                 activation = nn.ReLU()
@@ -63,11 +66,11 @@ class MLPArchitectureTorch(nn.Module):
         self.activation = activation
 
         match last_layer:
-            case "sigmoid":
+            case "sigmoid"|"logistic":
                 last_layer = nn.Sigmoid()
             case "tanh":
                 last_layer = nn.Tanh()
-            case "linear":
+            case "linear"|"identity":
                 last_layer = lambda x: x
             case "relu":
                 last_layer = nn.ReLU()
@@ -97,123 +100,181 @@ class MLPArchitectureTorch(nn.Module):
 
 class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
     """ """
+        
+    _parameter_constraints: dict = {
+        "nn_model": [torch.nn.Module],
+        "hidden_layer_sizes": [
+            "array-like",
+            Interval(Integral, 1, None, closed="left"),
+        ],
+        "activation": [StrOptions({"identity", "logistic", "tanh", "relu", "abs"}), callable],
+        "optimizer_class": [
+            StrOptions({"sgd", "adam", "newton", "lm"}),
+            type,
+            callable,
+        ],
+        "optimizer_params": [dict, None],
+        "batch_size": [
+            StrOptions({"auto"}),
+            Interval(Integral, 1, None, closed="left"),
+        ],
+        "n_iter": [Interval(Integral, 1, None, closed="left")],
+        "last_layer": [StrOptions({"identity", "logistic", "tanh", "relu"}), callable],
+        "loss_fn": [torch.nn.Module, None],
+        "dropout_rate": [Interval(Real, 0, 1, closed="left")],
+        "device": [StrOptions({"cpu", "cuda", "mps", "xpu", "xla", "meta"}), Interval(Integral, 0, None, closed="left")],
+        "train_loop_fn": [callable, None],
+        "tol": [Interval(Real, 0, None, closed="left")],
+        "validation_fraction": [Interval(Real, 0, 1, closed="left")],
+        "n_iter_no_change": [
+            Interval(Integral, 1, None, closed="left"),
+            Options(Real, {np.inf}),
+        ],
+        "verbose": ["verbose"],
+        "info_freq": [Interval(Integral, 1, None, closed="left")],
+        "random_state": ["random_state"],
+    }
 
+    @abstractmethod
     def __init__(
         self,
-        input_size: int,
-        nn_model=None,
-        layer_sizes: list = None,
-        optimizer_class=optim.Adam,
-        optimizer_params=None,
-        activation="relu",
-        last_layer="linear",
-        loss_fn=None,
-        dropout_rate=0,
-        device="cpu",
-        train_loop_fn=None,
-        patience=20,
-        val_size=0.1,
-        batch_size=5000,
-        n_epochs=100000,
-        verbose=True,
-        info_freq=1000,
+        nn_model,
+        hidden_layer_sizes,
+        activation,
+        optimizer_class,
+        optimizer_params,
+        batch_size,
+        n_iter,
+        last_layer,
+        loss_fn,
+        dropout_rate,
+        device,
+        train_loop_fn,
+        tol,
+        validation_fraction,
+        n_iter_no_change,
+        verbose,
+        info_freq,
+        random_state,
     ):
-        self.device = device
-        self.input_size = input_size
-        self.layer_sizes = layer_sizes
-        self.activation = activation
-        self.last_layer = last_layer
-        self.dropout_rate = dropout_rate
-        if nn_model is None:
-            nn_model = MLPArchitectureTorch(
-                input_size=input_size,
-                layer_sizes=layer_sizes,
-                activation=activation,
-                last_layer=last_layer,
-                dropout_rate=dropout_rate,
-                device=device,
-            )
         self.nn_model = nn_model
-
-        if loss_fn is None:
-            loss_fn = nn.MSELoss()
+        self.hidden_layer_sizes = hidden_layer_sizes
+        self.activation = activation
+        self.optimizer_class = optimizer_class
+        self.optimizer_params = optimizer_params
+        self.batch_size = batch_size
+        self.n_iter = n_iter
+        self.last_layer = last_layer
         self.loss_fn = loss_fn
+        self.dropout_rate = dropout_rate
+        self.device = device
+        self.train_loop_fn = train_loop_fn
+        self.tol = tol
+        self.validation_fraction = validation_fraction
+        self.n_iter_no_change = n_iter_no_change
+        self.verbose = verbose
+        self.info_freq = info_freq
+        self.random_state = random_state
 
-        match optimizer_class:
+    def fit(self, X, y, **kwargs):
+        X, y = check_X_y(X, y, multi_output=True, ensure_2d=True)
+        self.n_features_in_ = X.shape[1]
+        self.multioutput_ = y.ndim != 1
+        if not self.multioutput_:
+            y = y[:, None]
+
+        rng = check_random_state(self.random_state)
+        seed = rng.randint(0, 2**32 - 1)
+        torch.manual_seed(seed)
+        
+        if not hasattr(self, 'loss_fn_'):
+            self.loss_fn_ = nn.NLLLoss() if self.loss_fn is None else self.loss_fn
+        
+        self.batch_size_ = X.shape[0] if self.batch_size == "auto" else self.batch_size
+        self.train_loop_fn_ = train_loop if self.train_loop_fn is None else self.train_loop_fn
+        if self.nn_model is None:
+            self.nn_model_ = MLPArchitectureTorch(
+                input_size=self.n_features_in_,
+                layer_sizes=self.hidden_layer_sizes,
+                activation=self.activation,
+                last_layer=self.last_layer,
+                dropout_rate=self.dropout_rate,
+                device=self.device,
+            )
+        else:
+            self.nn_model_ = self.nn_model
+
+        match self.optimizer_class:
             case "sgd":
-                if optimizer_params is None:
-                    optimizer_params = {"lr": 1e-5}
+                if self.optimizer_params is None:
+                    self.optimizer_params_ = {"lr": 1e-5}
+                else:
+                    self.optimizer_params_ = self.optimizer_params
 
-                self.optimizer = optim.SGD(self.nn_model.parameters(), **optimizer_params)
+                self.optimizer_ = optim.SGD(self.nn_model_.parameters(), **self.optimizer_params_)
             case "adam":
-                if optimizer_params is None:
-                    optimizer_params = {"lr": 1e-5}
+                if self.optimizer_params is None:
+                    self.optimizer_params_ = {"lr": 1e-5}
+                else:
+                    self.optimizer_params_ = self.optimizer_params
 
-                self.optimizer = optim.Adam(self.nn_model.parameters(), **optimizer_params)
+                self.optimizer_ = optim.Adam(self.nn_model_.parameters(), **self.optimizer_params_)
             case "newton":
-                if optimizer_params is None:
-                    optimizer_params = {
+                if self.optimizer_params is None:
+                    self.optimizer_params_ = {
                         "lr_init": 1,
                         "lr_search_method": "backtrack",
                         "line_search_cond": "armijo",
                     }
+                else:
+                    self.optimizer_params_ = self.optimizer_params
 
-                self.optimizer = torch_numopt.NewtonLS(self.nn_model, **optimizer_params)
+                self.optimizer_ = torch_numopt.NewtonLS(self.nn_model_, **self.optimizer_params_)
             case "lm":
-                if optimizer_params is None:
-                    optimizer_params = {
+                if self.optimizer_params is None:
+                    self.optimizer_params_ = {
                         "lr_init": 1,
                         "lr_search_method": "backtrack",
                         "line_search_cond": "armijo",
                     }
+                else:
+                    self.optimizer_params_ = self.optimizer_params
 
-                self.optimizer = torch_numopt.LevenbergMarquardtLS(self.nn_model, **optimizer_params)
+                self.optimizer_ = torch_numopt.LevenbergMarquardtLS(self.nn_model, **self.optimizer_params_)
             case type():
-                if issubclass(optimizer_class, optim.Optimizer):
-                    if optimizer_params is None:
-                        optimizer_params = {"lr": 1e-5}
+                if issubclass(self.optimizer_class, optim.Optimizer):
+                    if self.optimizer_params is None:
+                        self.optimizer_params_ = {"lr": 1e-5}
+                    else:
+                        self.optimizer_params_ = self.optimizer_params
 
-                    self.optimizer = optimizer_class(self.nn_model.parameters(), lr=1e-5)
-                elif issubclass(optimizer_class, torch_numopt.CustomOptimizer):
-                    if optimizer_params is None:
-                        optimizer_params = {
+                    self.optimizer_ = self.optimizer_class(self.nn_model.parameters(), **self.optimizer_params_)
+                elif issubclass(self.optimizer_class, torch_numopt.CustomOptimizer):
+                    if self.optimizer_params is None:
+                        self.optimizer_params_ = {
                             "lr_init": 1,
                             "lr_search_method": "backtrack",
                             "line_search_cond": "armijo",
                         }
+                    else:
+                        self.optimizer_params_ = self.optimizer_params
 
-                    self.optimizer = optimizer_class(self.nn_model, **optimizer_params)
+                    self.optimizer_ = self.optimizer_class(self.nn_model, **self.optimizer_params_)
             case _:
+                print(self.optimizer_class)
                 raise ValueError("Expected `optimizer_class`'sgd', 'adam', 'newton' or a type.")
 
-        self.optimizer_class = optimizer_class
-        self.optimizer_params = optimizer_params
-
-        if train_loop_fn is None:
-            train_loop_fn = train_loop
-        self.train_loop_fn = train_loop_fn
-        self.patience = patience
-        self.val_size = val_size
-        self.batch_size = batch_size
-        self.n_epochs = n_epochs
-        self.verbose = verbose
-        self.info_freq = info_freq
-        self.history = None
-
-    def fit(self, X, y):
-        X, y = check_X_y(X, y, multi_output=True)
-        self.n_features_in_ = X.shape[1]
-
-        self.history = self.train_loop_fn(
+        self.history_ = self.train_loop_fn_(
             X,
             y,
-            self.nn_model,
-            self.loss_fn,
-            self.optimizer,
-            self.n_epochs,
-            self.patience,
-            self.batch_size,
-            self.val_size,
+            self.nn_model_,
+            self.loss_fn_,
+            self.optimizer_,
+            self.n_iter,
+            self.n_iter_no_change,
+            self.tol,
+            self.batch_size_,
+            self.validation_fraction,
             self.device,
             self.info_freq,
             self.verbose,
@@ -225,9 +286,12 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
     def predict(self, X):
         check_is_fitted(self)
         X = check_array(X)
-        self.nn_model.eval()
+        self.nn_model_.eval()
         X = torch.tensor(X, device=self.device, dtype=torch.float32)
-        return self.nn_model(X).detach().cpu().numpy()
+        pred = self.nn_model_(X).detach().cpu().numpy()
+        if not self.multioutput_:
+            pred = pred.ravel()
+        return pred
 
 def train_loop(
     X,
@@ -272,7 +336,7 @@ def train_loop(
 
             pred_batch = nn_model(X_batch)
             loss = loss_fn(y_batch, pred_batch)
-            train_loss += float(loss) * X_batch.shape[0]
+            train_loss += float(loss.detach()) * X_batch.shape[0]
 
             loss.backward()
             if isinstance(optimizer, torch_numopt.CustomOptimizer):

@@ -4,11 +4,13 @@ from sklearn_extensions.models.hopfield import BernoulliHopfieldNetwork, Bernoul
 
 # ----- BernoulliHopfieldNetwork -----
 def test_hopfield_init():
-    h = BernoulliHopfieldNetwork(iterations=5, synchronous=True, verbose=False, bipolar_output=False)
-    assert h.iterations == 5
+    h = BernoulliHopfieldNetwork(n_iter=5, synchronous=True, verbose=False, bipolar_output=False, random_state=None)
+    assert h.n_iter == 5
     assert h.synchronous is True
     assert h.verbose is False
     assert h.bipolar_output is False
+    assert h.random_state is None
+
 
 def test_hopfield_fit():
     X = np.array([[0, 1, 0], [1, 0, 1]])  # two patterns
@@ -33,7 +35,7 @@ def test_hopfield_transform_synchronous():
 
     # Add a noisy version
     X_noisy = np.array([[0, 0, 0], [1, 1, 1]])
-    h = BernoulliHopfieldNetwork(iterations=100, synchronous=True)
+    h = BernoulliHopfieldNetwork(n_iter=100, synchronous=True, random_state=42)
     h = h.fit(X)
     X_recalled = h.transform(X_noisy)
 
@@ -45,8 +47,7 @@ def test_hopfield_transform_synchronous():
 def test_hopfield_transform_asynchronous():
     X = np.array([[0, 1, 0], [1, 0, 1]])
     X_noisy = np.array([[0, 0, 0], [1, 1, 1]])
-    # h = BernoulliHopfieldNetwork(iterations=20, synchronous=False, random_state=42)
-    h = BernoulliHopfieldNetwork(iterations=20, synchronous=False)
+    h = BernoulliHopfieldNetwork(n_iter=20, synchronous=False, random_state=42)
     h.fit(X)
     X_recalled = h.transform(X_noisy)
     # Should still converge, but maybe slower

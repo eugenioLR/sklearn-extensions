@@ -6,10 +6,10 @@ def test_top_level_imports():
     assert hasattr(sklearn_extensions, 'models')
 
     from sklearn_extensions import models
-    assert hasattr(sklearn_extensions, 'elm')
-    assert hasattr(sklearn_extensions, 'hopfield')
-    assert hasattr(sklearn_extensions, 'mlp_torch')
-    assert hasattr(sklearn_extensions, 'rbfnn')
+    assert hasattr(models, 'elm')
+    assert hasattr(models, 'hopfield')
+    assert hasattr(models, 'mlp_torch')
+    assert hasattr(models, 'rbfnn')
 
 
 def test_model_zoo_imports():

@@ -23,7 +23,6 @@ def test_dbn_init_default_params():
     assert dbn.n_iter == 10
     assert dbn.verbose is False
     assert dbn.random_state is None
-    assert dbn.layers_ is None
 
 
 def test_dbn_init_custom_params():

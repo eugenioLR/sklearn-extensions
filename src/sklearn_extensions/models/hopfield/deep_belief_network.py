@@ -1,4 +1,6 @@
 from __future__ import annotations
+from numbers import Integral, Real 
+from sklearn.utils._param_validation import Interval, StrOptions
 from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.neural_network import BernoulliRBM
@@ -7,6 +9,14 @@ from sklearn.neural_network import BernoulliRBM
 
 
 class BernoulliDBN(BaseEstimator, TransformerMixin):
+    _parameter_constraints: dict = {
+        "hidden_layer_sizes": ["array_like", Interval(Integral, 1, None, closed="left")],
+        "learning_rate": [Interval(Real, 0, None, closed="neither")],
+        "batch_size": [Interval(Integral, 1, None, closed="left")],
+        "n_iter": [Interval(Integral, 0, None, closed="left")],
+        "verbose": ["verbose"],
+        "random_state": ["random_state"],
+    }
     def __init__(
         self,
         hidden_layer_sizes=None,
@@ -24,7 +34,6 @@ class BernoulliDBN(BaseEstimator, TransformerMixin):
         self.n_iter = n_iter
         self.verbose = verbose
         self.random_state = random_state
-        self.layers_ = None
     
     def fit(self, X, y=None):
         X = check_array(X)

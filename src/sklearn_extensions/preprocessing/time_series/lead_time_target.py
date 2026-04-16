@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.utils.validation import check_array
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class LeadFeatureTransformer(BaseEstimator, TransformerMixin):
@@ -17,8 +18,8 @@ class LeadFeatureTransformer(BaseEstimator, TransformerMixin):
         self.mask_ = np.arange(ntimesteps) >= self.lead_time
 
         windowed_features = np.full((ntimesteps, nfeatures, self.lead_time), np.nan, dtype=float)
-        for idx, val in enumerate(X[: -self.lead_time]):
-            windowed_features[idx + self.lead_time] = X[idx : idx + self.lead_time, :]
+        for idx, _ in enumerate(X[: -self.lead_time]):
+            windowed_features[idx + self.lead_time, :] = X[idx : idx + self.lead_time, :].T
 
         if self.flatten_output:
             windowed_features = windowed_features.reshape((ntimesteps, nfeatures * self.lead_time))
