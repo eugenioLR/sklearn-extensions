@@ -87,7 +87,7 @@ from sklearn.manifold import TSNE
 from sklearn.manifold import Isomap
 from sklearn.manifold import SpectralEmbedding
 
-from .models import (
+from .models.neural_network import (
     RBFNNClassifier,
     RBFNNRegressor,
     MLPClassifierTorch,
@@ -95,5 +95,5 @@ from .models import (
     BernoulliHopfieldNetwork,
     BernoulliDBN,
     ELMRegressor,
-    ELMClassifier
+    ELMClassifier,
 )

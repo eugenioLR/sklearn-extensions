@@ -5,11 +5,11 @@ def test_top_level_imports():
     assert hasattr(sklearn_extensions, 'model_zoo')
     assert hasattr(sklearn_extensions, 'models')
 
-    from sklearn_extensions import models
-    assert hasattr(models, 'elm')
-    assert hasattr(models, 'hopfield')
-    assert hasattr(models, 'mlp_torch')
-    assert hasattr(models, 'rbfnn')
+    from sklearn_extensions.models import neural_network
+    assert hasattr(neural_network, 'elm')
+    assert hasattr(neural_network, 'hopfield')
+    assert hasattr(neural_network, 'mlp_torch')
+    assert hasattr(neural_network, 'rbfnn')
 
 
 def test_model_zoo_imports():

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Tuple
-from numbers import Integral, Real 
+from numbers import Integral, Real
 import scipy as sp
 import numpy as np
 from sklearn.utils._param_validation import Interval, StrOptions, Options
@@ -19,11 +19,11 @@ class RBFNNModel(ABC, BaseEstimator):
 
     _parameter_constraints = {
         "n_units": [Interval(Integral, 1, None, closed="left")],
-        "linear_layer": [BaseEstimator],
+        "linear_layer": [BaseEstimator, None],
         "cluster_model": [BaseEstimator, None],
         "std_from_clusters": ["boolean"],
         "classification": ["boolean"],
-        "random_state": ["random_state"]
+        "random_state": ["random_state"],
     }
 
     @abstractmethod
@@ -79,11 +79,12 @@ class RBFNNModel(ABC, BaseEstimator):
         """ """
 
         X, y = check_X_y(X, y)
+        self._validate_params()
         if self.classification:
             self.classes_ = unique_labels(y)
         self.n_features_in_ = X.shape[1]
 
-        if not hasattr(self, 'linear_layer_'):
+        if not hasattr(self, "linear_layer_"):
             self.linear_layer_ = LinearRegression() if self.linear_layer is None else self.linear_layer
 
         self.cluster_model_ = KMeans(n_clusters=self.n_units, random_state=self.random_state) if self.cluster_model is None else self.cluster_model
@@ -143,7 +144,7 @@ class RBFNNClassifier(RBFNNModel, ClassifierMixin):
             classification=True,
             random_state=random_state,
         )
-    
+
     def fit(self, X, y):
         if self.linear_layer is None:
             if self.return_probability:
@@ -152,9 +153,9 @@ class RBFNNClassifier(RBFNNModel, ClassifierMixin):
                 self.linear_layer_ = RidgeClassifier(alpha=0, solver="svd", random_state=self.random_state)
         else:
             self.linear_layer_ = self.linear_layer
-        
+
         return super().fit(X, y)
-    
+
 
 class RBFNNRegressor(RBFNNModel, RegressorMixin):
     """ """

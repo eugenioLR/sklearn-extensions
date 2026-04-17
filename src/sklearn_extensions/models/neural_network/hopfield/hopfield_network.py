@@ -1,5 +1,5 @@
 from __future__ import annotations
-from numbers import Integral, Real 
+from numbers import Integral, Real
 import numpy as np
 from sklearn.utils._param_validation import Interval, StrOptions
 from sklearn.utils.validation import check_array, check_is_fitted
@@ -14,7 +14,7 @@ class BernoulliHopfieldNetwork(BaseEstimator, OneToOneFeatureMixin):
     """
 
     _parameter_constraints: dict = {
-        "n_iter": [Interval(Integral, 1, None, closed='left')],
+        "n_iter": [Interval(Integral, 1, None, closed="left")],
         "synchronous": ["boolean"],
         "fit_intercept": ["boolean"],
         "bipolar_output": ["boolean"],
@@ -29,7 +29,7 @@ class BernoulliHopfieldNetwork(BaseEstimator, OneToOneFeatureMixin):
         self.bipolar_output = bipolar_output
         self.verbose = verbose
         self.random_state = random_state
-    
+
     def energy(self, X):
         energy = -0.5 * np.einsum("ni,ji,nj->n", X, self.coef_, X)
         if self.fit_intercept:
@@ -39,6 +39,7 @@ class BernoulliHopfieldNetwork(BaseEstimator, OneToOneFeatureMixin):
 
     def fit(self, X, y=None):
         X = check_array(X)
+        self._validate_params()
         self.n_features_in_ = X.shape[1]
         self._random_state = check_random_state(self.random_state)
 
@@ -47,9 +48,9 @@ class BernoulliHopfieldNetwork(BaseEstimator, OneToOneFeatureMixin):
             X = 2 * X - 1
 
         n_samples = X.shape[0]
-        self.coef_ = 1/n_samples * X.T @ X
+        self.coef_ = 1 / n_samples * X.T @ X
         if self.fit_intercept:
-            self.intercept_ = 1/n_samples * np.mean(X, axis=0)
+            self.intercept_ = 1 / n_samples * np.mean(X, axis=0)
         np.fill_diagonal(self.coef_, 0)
 
         self.is_fitted_ = True

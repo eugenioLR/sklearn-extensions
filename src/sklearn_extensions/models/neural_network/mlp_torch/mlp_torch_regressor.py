@@ -1,12 +1,12 @@
 from __future__ import annotations
-from torch import optim, nn
-import sklearn
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.base import RegressorMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
+from torch import optim, nn
 from .mlp_torch_model import MLPModelTorch
 
 
-class MLPClassifierTorch(MLPModelTorch, sklearn.base.ClassifierMixin):
+class MLPRegressorTorch(MLPModelTorch, RegressorMixin):
     def __init__(
         self,
         nn_model=None,
@@ -16,7 +16,7 @@ class MLPClassifierTorch(MLPModelTorch, sklearn.base.ClassifierMixin):
         optimizer_params=None,
         batch_size="auto",
         n_iter=100000,
-        last_layer="logistic",
+        last_layer="linear",
         loss_fn=None,
         dropout_rate=0,
         device="cpu",
@@ -26,7 +26,7 @@ class MLPClassifierTorch(MLPModelTorch, sklearn.base.ClassifierMixin):
         n_iter_no_change=20,
         verbose=False,
         info_freq=1000,
-        random_state=None
+        random_state=None,
     ):
         super().__init__(
             nn_model=nn_model,
@@ -46,17 +46,17 @@ class MLPClassifierTorch(MLPModelTorch, sklearn.base.ClassifierMixin):
             n_iter_no_change=n_iter_no_change,
             verbose=verbose,
             info_freq=info_freq,
-            random_state=random_state
+            random_state=random_state,
         )
 
     def fit(self, X, y):
-        self.loss_fn_ = nn.CrossEntropyLoss() if self.loss_fn is None else self.loss_fn
+        self.loss_fn_ = nn.MSELoss() if self.loss_fn is None else self.loss_fn
         return super().fit(X, y)
 
     def score_report(self, X, y):
         pred = self.predict(X)
-        print(y)
         return {
-            "ACC": accuracy_score(y_true=y, y_pred=pred),
-            "F1": f1_score(y_true=y, y_pred=pred),
+            "R2": r2_score(y_true=y, y_pred=pred),
+            "RMSE": root_mean_squared_error(y_true=y, y_pred=pred),
+            "MAE": mean_absolute_error(y_true=y, y_pred=pred),
         }

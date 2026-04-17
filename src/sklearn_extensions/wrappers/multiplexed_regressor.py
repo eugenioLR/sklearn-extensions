@@ -26,6 +26,7 @@ class MultiplexedRegressor(BaseEstimator, RegressorMixin):
         X, y_class = check_X_y(X, y_class)
         self.classes_ = unique_labels(y_class)
         X, y_reg = check_X_y(X, y_reg, y_numeric=True)
+        self._validate_params()
 
         self.n_features_in_ = X.shape[1]
 
@@ -47,7 +48,7 @@ class MultiplexedRegressor(BaseEstimator, RegressorMixin):
 
             if self.verbose:
                 print(f"{np.count_nonzero(mask)} points for class {idx}")
-        
+
         self.is_fitted_ = True
         return self
 

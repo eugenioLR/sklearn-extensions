@@ -33,9 +33,8 @@ class BernoulliBoltzmannMachine(BaseEstimator, OneToOneFeatureMixin):
         activation = np.einsum("ij,nj->ni", self.coef_, X_state) + self.intercept_
         prob = 1 / (1 + np.exp(-2 * activation))  # for bipolar {-1,1}
 
-        new_state = 2*(np.random.uniform(0, 1, prob.shape) < prob) - 1
+        new_state = 2 * (np.random.uniform(0, 1, prob.shape) < prob) - 1
         return new_state
-
 
     def fit(self, X):
         # raise NotImplementedError
@@ -48,13 +47,12 @@ class BernoulliBoltzmannMachine(BaseEstimator, OneToOneFeatureMixin):
             X = 2 * X - 1
         elif not unique_values.issubset({-1, 1}):
             raise ValueError("Input must be either binary ({0,1}) or bipolar ({-1, 1}).")
-        
+
         self.network_size_ = self.n_features_in_ + self.hidden_units
 
         self.coef_ = np.random.normal(0, 0.01, (self.network_size_, self.network_size_))
         np.fill_diagonal(self.coef_, 0)
         self.intercept_ = np.zeros(self.network_size_)
-
 
         self.is_fitted_ = True
         return self

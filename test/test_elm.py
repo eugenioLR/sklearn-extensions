@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.datasets import make_classification, make_regression
 from sklearn.linear_model import LinearRegression, Ridge, LogisticRegression, RidgeClassifier
 from sklearn.utils.validation import check_random_state
-from sklearn_extensions.models.elm import ELMClassifier, ELMRegressor, BaseExtremeLearningMachine
+from sklearn_extensions.models.neural_network.elm import ELMClassifier, ELMRegressor, BaseExtremeLearningMachine
 
 
 # ----- ELMRegressor -----

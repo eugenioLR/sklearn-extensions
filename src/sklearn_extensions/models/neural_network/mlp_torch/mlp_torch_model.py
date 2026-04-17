@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from typing import Iterable
-from numbers import Integral, Real 
+from numbers import Integral, Real
 from abc import ABC, abstractmethod
 import copy
 from functools import reduce
@@ -24,6 +24,7 @@ class MLPArchitectureTorch(nn.Module):
     def __init__(
         self,
         input_size,
+        output_size=1,
         layer_sizes: list = None,
         activation="relu",
         last_layer="linear",
@@ -44,16 +45,19 @@ class MLPArchitectureTorch(nn.Module):
         self.layer_sizes = list(layer_sizes)
 
         self.layers = nn.ModuleList(
-            [nn.Linear(size_in, size_out, device=device) for size_in, size_out in zip([flat_size] + self.layer_sizes, self.layer_sizes + [1])]
+            [
+                nn.Linear(size_in, size_out, device=device)
+                for size_in, size_out in zip([flat_size] + self.layer_sizes, self.layer_sizes + [output_size])
+            ]
         )
         self.dropouts = nn.ModuleList([nn.Dropout(dropout_rate) for _ in self.layer_sizes])
 
         match activation:
-            case "sigmoid"|"logistic":
+            case "sigmoid" | "logistic":
                 activation = nn.Sigmoid()
             case "tanh":
                 activation = nn.Tanh()
-            case "linear"|"identity":
+            case "linear" | "identity":
                 activation = lambda x: x
             case "relu":
                 activation = nn.ReLU()
@@ -66,11 +70,15 @@ class MLPArchitectureTorch(nn.Module):
         self.activation = activation
 
         match last_layer:
-            case "sigmoid"|"logistic":
+            case "sigmoid" | "logistic":
                 last_layer = nn.Sigmoid()
+            case "softmax":
+                last_layer = nn.Softmax(1)
+            case "log_softmax":
+                last_layer = nn.LogSoftmax(1)
             case "tanh":
                 last_layer = nn.Tanh()
-            case "linear"|"identity":
+            case "linear" | "identity":
                 last_layer = lambda x: x
             case "relu":
                 last_layer = nn.ReLU()
@@ -100,9 +108,9 @@ class MLPArchitectureTorch(nn.Module):
 
 class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
     """ """
-        
+
     _parameter_constraints: dict = {
-        "nn_model": [torch.nn.Module],
+        "nn_model": [torch.nn.Module, None],
         "hidden_layer_sizes": [
             "array-like",
             Interval(Integral, 1, None, closed="left"),
@@ -119,7 +127,7 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
             Interval(Integral, 1, None, closed="left"),
         ],
         "n_iter": [Interval(Integral, 1, None, closed="left")],
-        "last_layer": [StrOptions({"identity", "logistic", "tanh", "relu"}), callable],
+        "last_layer": [StrOptions({"identity", "logistic", "tanh", "relu", "softmax", "log_softmax", "linear", "sigmoid"}), callable],
         "loss_fn": [torch.nn.Module, None],
         "dropout_rate": [Interval(Real, 0, 1, closed="left")],
         "device": [StrOptions({"cpu", "cuda", "mps", "xpu", "xla", "meta"}), Interval(Integral, 0, None, closed="left")],
@@ -179,22 +187,30 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
     def fit(self, X, y, **kwargs):
         X, y = check_X_y(X, y, multi_output=True, ensure_2d=True)
         self.n_features_in_ = X.shape[1]
-        self.multioutput_ = y.ndim != 1
-        if not self.multioutput_:
-            y = y[:, None]
+        self._validate_params()
+
+        if hasattr(self, "classes_"):
+            self.multioutput_ = False
+            self.n_features_out_ = len(self.classes_)
+        else:
+            self.multioutput_ = y.ndim != 1
+            if not self.multioutput_:
+                y = y[:, None]
+            self.n_features_out_ = y.shape[1]
 
         rng = check_random_state(self.random_state)
         seed = rng.randint(0, 2**32 - 1)
         torch.manual_seed(seed)
-        
-        if not hasattr(self, 'loss_fn_'):
-            self.loss_fn_ = nn.NLLLoss() if self.loss_fn is None else self.loss_fn
-        
+
+        if not hasattr(self, "loss_fn_"):
+            self.loss_fn_ = nn.MSELoss() if self.loss_fn is None else self.loss_fn
+
         self.batch_size_ = X.shape[0] if self.batch_size == "auto" else self.batch_size
         self.train_loop_fn_ = train_loop if self.train_loop_fn is None else self.train_loop_fn
         if self.nn_model is None:
             self.nn_model_ = MLPArchitectureTorch(
                 input_size=self.n_features_in_,
+                output_size=self.n_features_out_,
                 layer_sizes=self.hidden_layer_sizes,
                 activation=self.activation,
                 last_layer=self.last_layer,
@@ -214,7 +230,7 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
                 self.optimizer_ = optim.SGD(self.nn_model_.parameters(), **self.optimizer_params_)
             case "adam":
                 if self.optimizer_params is None:
-                    self.optimizer_params_ = {"lr": 1e-5}
+                    self.optimizer_params_ = {"lr": 1e-3}
                 else:
                     self.optimizer_params_ = self.optimizer_params
 
@@ -240,7 +256,7 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
                 else:
                     self.optimizer_params_ = self.optimizer_params
 
-                self.optimizer_ = torch_numopt.LevenbergMarquardtLS(self.nn_model, **self.optimizer_params_)
+                self.optimizer_ = torch_numopt.LevenbergMarquardtLS(self.nn_model_, **self.optimizer_params_)
             case type():
                 if issubclass(self.optimizer_class, optim.Optimizer):
                     if self.optimizer_params is None:
@@ -261,7 +277,6 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
 
                     self.optimizer_ = self.optimizer_class(self.nn_model, **self.optimizer_params_)
             case _:
-                print(self.optimizer_class)
                 raise ValueError("Expected `optimizer_class`'sgd', 'adam', 'newton' or a type.")
 
         self.history_ = self.train_loop_fn_(
@@ -279,15 +294,14 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
             self.info_freq,
             self.verbose,
         )
-    
+
         self.is_fitted_ = True
         return self
 
     def predict(self, X):
         check_is_fitted(self)
-        X = check_array(X)
+        X = torch.tensor(check_array(X), device=self.device, dtype=torch.float32)
         self.nn_model_.eval()
-        X = torch.tensor(X, device=self.device, dtype=torch.float32)
         pred = self.nn_model_(X).detach().cpu().numpy()
         if not self.multioutput_:
             pred = pred.ravel()
@@ -312,9 +326,13 @@ def train_loop(
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=val_size, shuffle=True)
 
     X_train = torch.tensor(X_train, device=device, dtype=torch.float32)
-    y_train = torch.tensor(y_train, device=device, dtype=torch.float32)
     X_val = torch.tensor(X_val, device=device, dtype=torch.float32)
-    y_val = torch.tensor(y_val, device=device, dtype=torch.float32)
+    if np.issubdtype(y_train.dtype, np.integer):
+        y_type = torch.long
+    else:
+        y_type = torch.float32
+    y_train = torch.tensor(y_train, device=device, dtype=y_type)
+    y_val = torch.tensor(y_val, device=device, dtype=y_type)
 
     nn_model = nn_model.to(device)
 
@@ -336,7 +354,7 @@ def train_loop(
             y_batch = y_train_shuf[start : start + batch_size]
 
             pred_batch = nn_model(X_batch)
-            loss = loss_fn(y_batch, pred_batch)
+            loss = loss_fn(pred_batch, y_batch)
             train_loss += float(loss.detach()) * X_batch.shape[0]
 
             loss.backward()
@@ -354,8 +372,8 @@ def train_loop(
 
         with torch.no_grad():
             pred_val = nn_model(X_val)
-            val_loss = float(loss_fn(y_val, pred_val))
-        
+            val_loss = float(loss_fn(pred_val, y_val))
+
         history["val_loss"].append(val_loss)
 
         # save best weights each epoch
@@ -366,7 +384,8 @@ def train_loop(
         elif patience > 0:
             patience -= 1
         else:
-            print(f"Epoch {epoch+1:6d}/{n_epochs}: Train loss: {train_loss:3.5f}, Val loss: {val_loss:3.5f}, Best loss: {best_error:3.5f}")
+            if verbose:
+                print(f"Epoch {epoch+1:6d}/{n_epochs}: Train loss: {train_loss:3.5f}, Val loss: {val_loss:3.5f}, Best loss: {best_error:3.5f}")
             break
 
         if verbose and epoch % info_freq == 0:
