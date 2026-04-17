@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.datasets import make_classification, make_regression
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.cluster import KMeans
-from sklearn_extensions.models.rbfnn import RBFNNClassifier, RBFNNRegressor, RBFLayer
+from sklearn_extensions.models.neural_network.rbfnn import RBFNNClassifier, RBFNNRegressor, RBFLayer
 import torch
 
 # ----- RBFNNClassifier -----
@@ -37,7 +37,7 @@ def test_rbf_classifier_predict_proba(random_data):
 
 def test_rbf_classifier_with_custom_linear(random_data):
     X, y_class, _ = random_data
-    custom_linear = LogisticRegression(penalty='l2', C=1.0)
+    custom_linear = LogisticRegression(l1_ratio=0, C=1.0)
     clf = RBFNNClassifier(n_units=3, linear_layer=custom_linear)
     clf.fit(X, y_class)
     assert clf.linear_layer_ is custom_linear
@@ -73,17 +73,18 @@ def test_rbf_regressor_custom_cluster(random_data):
 
 # ----- RBFLayer (PyTorch) -----
 def test_rbf_layer_init():
-    layer = RBFLayer(input_size=5, out_size=3)
-    assert layer.centers.shape == (5, 3)
+    layer = RBFLayer(in_features=5, out_features=3)
+    assert layer.centers.shape == (3, 5)
     assert layer.widths.shape == (3,)
     assert layer.centers.requires_grad is True
     assert layer.widths.requires_grad is True
 
 def test_rbf_layer_forward():
-    layer = RBFLayer(input_size=2, out_size=3)
+    layer = RBFLayer(in_features=2, out_features=3)
     # Set fixed centers/widths for deterministic test
     with torch.no_grad():
-        layer.centers[:, :] = torch.tensor([[1., 2., 3.], [1., 2., 3.]])
+        # layer.centers[:, :] = torch.tensor([[1., 2., 3.], [1., 2., 3.]])
+        layer.centers[:, :] = torch.tensor([[1., 1.], [2., 2.], [3., 3.]])
         layer.widths[:] = torch.tensor([1., 1., 1.])
     x = torch.tensor([[1., 1.], [2., 2.]])
     out = layer.forward(x)
@@ -95,9 +96,9 @@ def test_rbf_layer_forward():
 
 def test_rbf_layer_initialize_clustering():
     X = np.random.randn(50, 3)
-    layer = RBFLayer(input_size=3, out_size=4)
+    layer = RBFLayer(in_features=3, out_features=4)
     layer.initialize_clustering(X, n_samples=30, width_init='random')
-    assert layer.centers.shape == (3, 4)
+    assert layer.centers.shape == (4, 3)
     assert layer.widths.shape == (4,)
     # Check centers are from kmeans (approximate)
     # We can't guarantee exact but they should be within data range

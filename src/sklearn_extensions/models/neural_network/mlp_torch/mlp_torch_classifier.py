@@ -1,12 +1,16 @@
 from __future__ import annotations
-from sklearn.base import RegressorMixin
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
+import numpy as np
+import scipy as sp
+import sklearn
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.utils.multiclass import unique_labels
+from sklearn.utils.validation import check_is_fitted, check_array
+import torch
 from torch import optim, nn
 from .mlp_torch_model import MLPModelTorch
 
 
-class MLPRegressorTorch(MLPModelTorch, RegressorMixin):
+class MLPClassifierTorch(MLPModelTorch, sklearn.base.ClassifierMixin):
     def __init__(
         self,
         nn_model=None,
@@ -46,18 +50,32 @@ class MLPRegressorTorch(MLPModelTorch, RegressorMixin):
             n_iter_no_change=n_iter_no_change,
             verbose=verbose,
             info_freq=info_freq,
-            random_state=random_state
+            random_state=random_state,
         )
 
     def fit(self, X, y):
-        self.loss_fn_ = nn.MSELoss() if self.loss_fn is None else self.loss_fn
+        self.classes_ = unique_labels(y)
+        self.loss_fn_ = nn.NLLLoss() if self.loss_fn is None else self.loss_fn
         return super().fit(X, y)
-    
+
+    def predict_proba(self, X):
+        check_is_fitted(self)
+        X = torch.tensor(check_array(X), device=self.device, dtype=torch.float32)
+        self.nn_model_.eval()
+        with torch.no_grad():
+            proba = self.nn_model_(X).detach().cpu().numpy()
+
+        proba = sp.special.softmax(proba, axis=1)
+        return proba  # Keep shape (n_samples, n_classes)
+
+    def predict(self, X):
+        proba = self.predict_proba(X)
+        indices = np.argmax(proba, axis=1)
+        return self.classes_[indices]
+
     def score_report(self, X, y):
         pred = self.predict(X)
-        print(y)
         return {
-            "R2": r2_score(y_true=y, y_pred=pred),
-            "RMSE": root_mean_squared_error(y_true=y, y_pred=pred),
-            "MAE": mean_absolute_error(y_true=y, y_pred=pred),
+            "ACC": accuracy_score(y_true=y, y_pred=pred),
+            "F1": f1_score(y_true=y, y_pred=pred),
         }
