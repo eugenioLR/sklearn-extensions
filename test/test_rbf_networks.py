@@ -3,7 +3,8 @@ import numpy as np
 from sklearn.datasets import make_classification, make_regression
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.cluster import KMeans
-from sklearn_extensions.models.neural_network.rbfnn import RBFNNClassifier, RBFNNRegressor, RBFLayer
+from sklearn_extensions.models.neural_network.rbfnn import RBFNNClassifier, RBFNNRegressor
+from sklearn_extensions.models.pytorch.rbfnn import RBFLayer
 import torch
 
 # ----- RBFNNClassifier -----

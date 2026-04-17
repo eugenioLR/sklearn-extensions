@@ -9,12 +9,7 @@ from sklearn.utils.multiclass import unique_labels
 
 
 class MultiplexedRegressor(BaseEstimator, RegressorMixin):
-    _parameter_constraints = {
-        "regressors": [list],
-        "classifier": [BaseEstimator],
-        "fit_on_predictions": ["boolean"],
-        "verbose": ["verbose"]
-    }
+    _parameter_constraints = {"regressors": [list], "classifier": [BaseEstimator], "fit_on_predictions": ["boolean"], "verbose": ["verbose"]}
 
     def __init__(self, regressors, classifier, fit_on_predictions=False, verbose=False):
         self.regressors = regressors

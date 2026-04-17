@@ -2,6 +2,7 @@ import numpy as np
 from sklearn.utils.validation import check_array, check_consistent_length
 from sklearn.metrics._classification import _prf_divide
 
+
 def soft_accuracy_score(y_true, y_pred):
     y_true = check_array(y_true, ensure_2d=False)
     y_pred = check_array(y_pred, ensure_2d=False)
@@ -13,6 +14,7 @@ def soft_accuracy_score(y_true, y_pred):
     tn_sum = np.sum((1 - y_true) * (1 - y_pred))
 
     return (tp_sum + tn_sum) / n_samples
+
 
 def soft_precision_score(y_true, y_pred):
     y_true = check_array(y_true, ensure_2d=False)
@@ -58,7 +60,7 @@ def soft_geometric_mean_score(y_true, y_pred):
 
     if not np.isfinite(tpr) or not np.isfinite(tnr):
         return 0
-    
+
     return np.sqrt(tpr * tnr)
 
 
@@ -80,5 +82,4 @@ def fbeta_score_prob(y_true, y_pred, beta):
 
     prec = soft_precision_score(y_true, y_pred)
     rec = soft_recall_score(y_true, y_pred)
-    return (1 + beta**2) * (prec * rec) /((beta**2 * prec) + rec + 1e-8)
-
+    return (1 + beta**2) * (prec * rec) / ((beta**2 * prec) + rec + 1e-8)

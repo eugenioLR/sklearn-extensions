@@ -1,2 +1,1 @@
 from .extreme_learning_machine import ELMClassifier, ELMRegressor, BaseExtremeLearningMachine
-from .random_projection_layer import RandomProjectionLayer

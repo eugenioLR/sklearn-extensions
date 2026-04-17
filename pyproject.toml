@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sklearn_extensions"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
   { name="Eugenio Lorente", email="eugenio.lorente@uah.es" },
 ]
