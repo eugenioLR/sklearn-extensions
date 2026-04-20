@@ -1,3 +1,7 @@
+"""
+https://aclanthology.org/2020.eval4nlp-1.9/
+"""
+
 import numpy as np
 from sklearn.utils.validation import check_array, check_consistent_length
 from sklearn.metrics._classification import _prf_divide
@@ -75,7 +79,7 @@ def soft_f1_score(y_true, y_pred):
     return 2 * product_sum / (true_pred_sum + 1e-8)
 
 
-def fbeta_score_prob(y_true, y_pred, beta):
+def soft_fbeta_score(y_true, y_pred, beta):
     y_true = check_array(y_true, ensure_2d=False)
     y_pred = check_array(y_pred, ensure_2d=False)
     check_consistent_length(y_true, y_pred)

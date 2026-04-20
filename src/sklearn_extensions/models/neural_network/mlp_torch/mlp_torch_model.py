@@ -61,6 +61,8 @@ class MLPArchitectureTorch(nn.Module):
                 activation = lambda x: x
             case "relu":
                 activation = nn.ReLU()
+            case "lrelu":
+                activation = nn.LeakyReLU(0.01)
             case "abs":
                 activation = torch.abs
             case func if callable(func):
@@ -82,6 +84,8 @@ class MLPArchitectureTorch(nn.Module):
                 last_layer = lambda x: x
             case "relu":
                 last_layer = nn.ReLU()
+            case "lrelu":
+                last_layer = nn.LeakyReLU(0.01)
             case "abs":
                 last_layer = torch.abs
             case func if callable(func):
@@ -115,7 +119,7 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
             "array-like",
             Interval(Integral, 1, None, closed="left"),
         ],
-        "activation": [StrOptions({"identity", "logistic", "tanh", "relu", "abs"}), callable],
+        "activation": [StrOptions({"identity", "logistic", "tanh", "relu", "lrelu", "abs"}), callable],
         "optimizer_class": [
             StrOptions({"sgd", "adam", "newton", "lm"}),
             type,
@@ -264,7 +268,7 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
                     else:
                         self.optimizer_params_ = self.optimizer_params
 
-                    self.optimizer_ = self.optimizer_class(self.nn_model.parameters(), **self.optimizer_params_)
+                    self.optimizer_ = self.optimizer_class(self.nn_model_.parameters(), **self.optimizer_params_)
                 elif issubclass(self.optimizer_class, torch_numopt.CustomOptimizer):
                     if self.optimizer_params is None:
                         self.optimizer_params_ = {
@@ -275,7 +279,10 @@ class MLPModelTorch(ABC, sklearn.base.BaseEstimator):
                     else:
                         self.optimizer_params_ = self.optimizer_params
 
-                    self.optimizer_ = self.optimizer_class(self.nn_model, **self.optimizer_params_)
+                    self.optimizer_ = self.optimizer_class(self.nn_model_, **self.optimizer_params_)
+                else:
+                    raise ValueError("An optimizer must be a subclass of torch.optim.Optimizer.")
+
             case _:
                 raise ValueError("Expected `optimizer_class`'sgd', 'adam', 'newton' or a type.")
 
@@ -377,7 +384,7 @@ def train_loop(
         history["val_loss"].append(val_loss)
 
         # save best weights each epoch
-        if val_loss < best_error - tol:
+        if val_loss - best_error < tol:
             best_error = val_loss
             best_weights = copy.deepcopy(nn_model.state_dict())
             patience = max_patience
